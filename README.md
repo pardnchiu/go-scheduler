@@ -4,7 +4,7 @@
 
 [![license](https://img.shields.io/github/license/pardnchiu/go-cron-job)](https://github.com/pardnchiu/go-cron-job/blob/main/LICENSE)
 [![version](https://img.shields.io/github/v/tag/pardnchiu/go-cron-job)](https://github.com/pardnchiu/go-cron-job/releases)
-[![readme](https://img.shields.io/badge/readme-English-blue)](https://github.com/pardnchiu/go-cron-job/blob/main/README.md) 
+[![readme](https://img.shields.io/badge/readme-中文-blue)](https://github.com/pardnchiu/go-cron-job/blob/main/README.zh.md) 
 
 ## Three key features
 
@@ -73,7 +73,7 @@ flowchart TD
 
 ## Dependencies
 
-- [`github.com/pardnchiu/go-logger`](https://github.com/pardnchiu/go-logger) - Logging system
+- [`github.com/pardnchiu/go-logger`](https://github.com/pardnchiu/go-logger)
 
 ## How to use
 
@@ -269,7 +269,7 @@ scheduler.Add("@every 12h", task)
 
 ## License
 
-This project is licensed under the [MIT](LICENSE) License.
+This project is licensed under the [MIT](https://github.com/pardnchiu/go-cron-job/blob/main/LICENSE) License.
 
 ## Author
 

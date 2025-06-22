@@ -73,7 +73,7 @@ flowchart TD
 
 ## 相依套件
 
-- [`github.com/pardnchiu/go-logger`](https://github.com/pardnchiu/go-logger) - 記錄系統
+- [`github.com/pardnchiu/go-logger`](https://github.com/pardnchiu/go-logger)
 
 ## 使用方法
 
