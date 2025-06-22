@@ -1,4 +1,4 @@
-# Cron Job Scheduler
+# Cron Job (Golang)
 
 > Minimal scheduler for Golang supporting standard cron expressions, predefined descriptors, and custom intervals for easy scheduled task implementation in Go.<br>
 > Originally designed for threat score decay calculation scheduling in [pardnchiu/go-ip-sentry](https://github.com/pardnchiu/go-ip-sentry).
