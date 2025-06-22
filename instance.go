@@ -29,77 +29,81 @@ func New(c Config) (*cron, error) {
 		running:  false,
 	}
 
-	cron.mutex.Lock()
-	defer cron.mutex.Unlock()
+	return cron, nil
+}
 
-	if !cron.running {
-		cron.running = true
+func (c *cron) Start() {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	if !c.running {
+		c.running = true
 
 		go func() {
-			now := time.Now().In(cron.location)
+			now := time.Now().In(c.location)
 
-			for _, entry := range cron.heap {
+			for _, entry := range c.heap {
 				entry.next = entry.schedule.next(now)
 			}
-			heap.Init(&cron.heap)
+			heap.Init(&c.heap)
 
 			for {
 				var timer *time.Timer
 				var timerC <-chan time.Time
 
-				if len(cron.heap) == 0 || cron.heap[0].next.IsZero() {
+				if len(c.heap) == 0 || c.heap[0].next.IsZero() {
 					timerC = nil
 				} else {
-					timer = time.NewTimer(cron.heap[0].next.Sub(now))
+					timer = time.NewTimer(c.heap[0].next.Sub(now))
 					timerC = timer.C
 				}
 
 				for {
 					select {
 					case now = <-timerC:
-						now = now.In(cron.location)
+						now = now.In(c.location)
 
-						for len(cron.heap) > 0 && (cron.heap[0].next.Before(now) || cron.heap[0].next.Equal(now)) {
-							e := heap.Pop(&cron.heap).(*task)
+						for len(c.heap) > 0 && (c.heap[0].next.Before(now) || c.heap[0].next.Equal(now)) {
+							e := heap.Pop(&c.heap).(*task)
 
 							if !e.enable {
 								continue
 							}
 
-							cron.wait.Add(1)
+							c.wait.Add(1)
 							go func() {
 								defer func() {
 									if r := recover(); r != nil {
 										fmt.Printf("Task panic recovered: %v\n", r)
 									}
 								}()
-								defer cron.wait.Done()
+								defer c.wait.Done()
 								e.action()
 							}()
 
 							e.prev = e.next
 							e.next = e.schedule.next(now)
 							if !e.next.IsZero() {
-								heap.Push(&cron.heap, e)
+								heap.Push(&c.heap, e)
 							}
 						}
 
-					case newEntry := <-cron.add:
+					case newEntry := <-c.add:
 						if timer != nil {
 							timer.Stop()
 						}
-						now = time.Now().In(cron.location)
+						now = time.Now().In(c.location)
 						newEntry.next = newEntry.schedule.next(now)
-						heap.Push(&cron.heap, newEntry)
+						heap.Push(&c.heap, newEntry)
 
-					case id := <-cron.remove:
+					case id := <-c.remove:
 						if timer != nil {
 							timer.Stop()
 						}
-						now = time.Now().In(cron.location)
-						cron.Remove(id)
+						now = time.Now().In(c.location)
+						c.Remove(id)
 
-					case <-cron.stop:
+					case <-c.stop:
 						if timer != nil {
 							timer.Stop()
 						}
@@ -110,22 +114,20 @@ func New(c Config) (*cron, error) {
 			}
 		}()
 	}
-
-	return cron, nil
 }
 
-func (cron *cron) Stop() context.Context {
-	cron.mutex.Lock()
-	defer cron.mutex.Unlock()
+func (c *cron) Stop() context.Context {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
-	if cron.running {
-		cron.stop <- struct{}{}
-		cron.running = false
+	if c.running {
+		c.stop <- struct{}{}
+		c.running = false
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		cron.wait.Wait()
+		c.wait.Wait()
 		cancel()
 	}()
 

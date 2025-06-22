@@ -1,18 +1,24 @@
-# Cron 任務排程器
+# Cron 任務排程 (Golang)
 
-> 支援標準 cron 表達式、預定義描述符和自訂間隔的 Golang 最小化排程器，輕鬆實現 Go 中的定時任務。
+> 支援標準 cron 表達式、自定義描述符和自訂間隔的 Golang 最小化排程器，輕鬆使用 Go 撰寫排程。<br>
+> 原本是設計給 [pardnchiu/go-ip-sentry](https://github.com/pardnchiu/go-ip-sentry) 威脅分數衰退計算所使用到的排程功能。
 
-[![license](https://img.shields.io/github/license/pardnchiu/go-cron-job)](https://github.com/pardnchiu/go-cron-job/blob/main/LICENSE)
+[![license](https://img.shields.io/github/license/pardnchiu/go-cron-job)](LICENSE)
 [![version](https://img.shields.io/github/v/tag/pardnchiu/go-cron-job)](https://github.com/pardnchiu/go-cron-job/releases)
-[![readme](https://img.shields.io/badge/readme-English-blue)](https://github.com/pardnchiu/go-cron-job/blob/main/README.md) 
+[![readme](https://img.shields.io/badge/readme-English-blue)](README.md) 
 
 ## 三大核心特色
 
-- **靈活排程支援**：完整支援標準 cron 表達式、預定義描述符（@hourly、@daily、@weekly 等）和自訂間隔（@every）語法
-- **併發安全執行**：執行緒安全的任務執行和管理，具有 panic 恢復機制和動態任務新增/移除功能
-- **高效能架構**：基於最小堆的任務排程演算法，優化記憶體使用，確保在大量任務場景中的最佳效能
+### 靈活語法
+支援標準 cron 表達式、自定義描述符（`@hourly`、`@daily`、`@weekly` 等）和自訂間隔（`@every`）語法
 
-## 執行流程
+### 併發執行
+併發的任務執行和管理，具有 panic 恢復機制和動態任務新增/移除功能
+
+### 高效架構
+基於最小堆的任務排程演算法，確保在大量任務場景中的最佳效能
+
+## 流程圖
 
 <details>
 <summary>點擊查看</summary>
@@ -71,9 +77,9 @@ flowchart TD
 
 </details>
 
-## 相依套件
+## 依賴套件
 
-- [`github.com/pardnchiu/go-logger`](https://github.com/pardnchiu/go-logger) - 記錄系統
+- [`github.com/pardnchiu/go-logger`](https://github.com/pardnchiu/go-logger)
 
 ## 使用方法
 
@@ -91,52 +97,50 @@ import (
   "log"
   "time"
   
-  cronJob "github.com/pardnchiu/go-cron"
+  cj "github.com/pardnchiu/go-cron"
 )
 
 func main() {
-  // 建立配置
-  config := cronJob.Config{
-  Log: &cronJob.Log{
-    Stdout: true,
-  },
-  Location: time.Local,
+  config := cj.Config{
+    Log: &cj.Log{
+      Stdout: true,
+    },
+    Location: time.Local,
   }
   
-  // 初始化 cron 排程器
-  scheduler, err := cronJob.New(config)
+  // 初始化
+  scheduler, err := cj.New(config)
   if err != nil {
-  log.Fatal(err)
+    log.Fatal(err)
   }
   
   // 使用不同排程新增任務
   
-  // 標準 cron 表達式 - 每 5 分鐘
+  // 每 5 分鐘
   id1, err := scheduler.Add("*/5 * * * *", func() {
-  fmt.Println("任務每 5 分鐘執行一次")
+    fmt.Println("任務每 5 分鐘執行一次")
   })
   
-  // 預定義描述符 - 每小時
+  // 每小時
   id2, err := scheduler.Add("@hourly", func() {
-  fmt.Println("每小時任務已執行")
+    fmt.Println("每小時任務已執行")
   })
   
-  // 自訂間隔 - 每 30 秒
+  // 每 30 秒
   id3, err := scheduler.Add("@every 30s", func() {
-  fmt.Println("任務每 30 秒執行一次")
+    fmt.Println("任務每 30 秒執行一次")
   })
   
   if err != nil {
-  log.Printf("新增任務失敗: %v", err)
+    log.Printf("新增任務失敗: %v", err)
   }
   
-  // 執行一段時間
   time.Sleep(10 * time.Minute)
   
-  // 移除特定任務
+  // 移除任務
   scheduler.Remove(id1)
   
-  // 停止排程器並等待完成
+  // 停止並等待完成
   ctx := scheduler.Stop()
   <-ctx.Done()
   
@@ -144,7 +148,7 @@ func main() {
 }
 ```
 
-## 配置設定
+## 配置介紹
 
 ```go
 type Config struct {
@@ -161,9 +165,9 @@ type Log struct {
 }
 ```
 
-## 支援的排程格式
+## 支援格式
 
-### 標準 Cron 表達式
+### 標準 Cron
 5 欄位格式：`分鐘 小時 日 月 星期`
 
 ```go
@@ -183,11 +187,11 @@ scheduler.Add("*/15 * * * *", task)
 scheduler.Add("0 6 1 * *", task)
 ```
 
-### 預定義描述符
+### 自定義
 
 ```go
 // 1 月 1 日午夜
-scheduler.Add("@yearly", task)    // 或 "@annually"
+scheduler.Add("@yearly", task)
 
 // 每月第一天午夜
 scheduler.Add("@monthly", task)
@@ -196,15 +200,11 @@ scheduler.Add("@monthly", task)
 scheduler.Add("@weekly", task)
 
 // 每日午夜
-scheduler.Add("@daily", task)     // 或 "@midnight"
+scheduler.Add("@daily", task)
 
 // 每小時整點
 scheduler.Add("@hourly", task)
-```
 
-### 自訂間隔
-
-```go
 // 每 30 秒
 scheduler.Add("@every 30s", task)
 
@@ -218,17 +218,21 @@ scheduler.Add("@every 2h", task)
 scheduler.Add("@every 12h", task)
 ```
 
-## 核心函數
+## 可用函式
 
-### 排程器管理
+### 排程管理
 
-- **New** - 建立新的排程器實例
+- **New** - 建立新的排程實例
   ```go
-  scheduler, err := cronJob.New(config)
+  scheduler, err := cj.New(config)
   ```
-  - 初始化具有可配置輸出和輪替的記錄系統
   - 設置任務堆和通訊通道
-  - 自動啟動排程迴圈
+
+- **Start** - 啟動排程實例
+  ```go
+  scheduler.Start()
+  ```
+  - 啟動排程迴圈
 
 - **Stop** - 正常停止排程器
   ```go
@@ -237,35 +241,31 @@ scheduler.Add("@every 12h", task)
   ```
   - 向主迴圈發送停止信號
   - 回傳在所有執行中任務完成時完成的 context
-  - 確保乾淨的關閉而不中斷任務
+  - 確保不中斷任務的關閉
 
 ### 任務管理
 
-- **Add** - 排程新任務
+- **Add** - 新增排程任務
   ```go
   taskID, err := scheduler.Add("0 */2 * * *", func() {
-  // 任務邏輯
+    // 任務邏輯
   })
   ```
-  - 解析排程表達式或描述符
+  - 解析排程語法
   - 產生唯一的任務 ID 以便管理
-  - 執行時期執行緒安全的新增
 
-- **Remove** - 取消排程任務
+- **Remove** - 取消任務排程
   ```go
   scheduler.Remove(taskID)
   ```
   - 從排程佇列中移除任務
   - 無論排程器狀態如何都可安全呼叫
 
-## 執行流程
-
-1. 使用 [`New`](instance.go) 建立排程器實例
-2. 使用 [`Add`](add.go) 新增任務到排程
-3. 排程器自動計算下次執行時間
-4. 當執行時間到達時觸發任務
-5. 使用 [`Remove`](remove.go) 移除不需要的任務
-6. 使用 [`Stop`](instance.go) 正常關閉排程器
+## 功能預告
+- 導入如 [php-async](https://github.com/pardnchiu/php-async) 中的任務依賴關係管理
+  - 前置依賴：任務 B 在任務 A 完成後執行
+  - 後置依賴：任務 B 在任務 A 開始前執行
+  - 多重依賴：任務 C 等待任務 A、B 全部完成後執行
 
 ## 授權條款
 

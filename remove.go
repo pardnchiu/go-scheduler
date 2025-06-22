@@ -4,19 +4,19 @@ import (
 	"container/heap"
 )
 
-func (cron *cron) Remove(id int) {
-	cron.mutex.Lock()
-	defer cron.mutex.Unlock()
+func (c *cron) Remove(id int) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
-	if cron.running {
-		cron.remove <- id
+	if c.running {
+		c.remove <- id
 		return
 	}
 
-	for i, entry := range cron.heap {
+	for i, entry := range c.heap {
 		if entry.id == id {
 			entry.enable = false
-			heap.Remove(&cron.heap, i)
+			heap.Remove(&c.heap, i)
 			break
 		}
 	}

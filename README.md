@@ -1,32 +1,38 @@
-# Cron Job Scheduler
+# Cron Job Scheduler (Golang)
 
-> Minimal scheduler for Golang supporting standard cron expressions, predefined descriptors, and custom intervals for easy scheduled task implementation in Go.
+> A minimal Golang scheduler supporting standard cron expressions, custom descriptors, and custom intervals for easy scheduling in Go.<br>
+> Originally designed for the scheduling functionality used in [pardnchiu/go-ip-sentry](https://github.com/pardnchiu/go-ip-sentry) threat score decay calculations.
 
-[![license](https://img.shields.io/github/license/pardnchiu/go-cron-job)](https://github.com/pardnchiu/go-cron-job/blob/main/LICENSE)
+[![license](https://img.shields.io/github/license/pardnchiu/go-cron-job)](LICENSE)
 [![version](https://img.shields.io/github/v/tag/pardnchiu/go-cron-job)](https://github.com/pardnchiu/go-cron-job/releases)
-[![readme](https://img.shields.io/badge/readme-English-blue)](https://github.com/pardnchiu/go-cron-job/blob/main/README.md) 
+[![readme](https://img.shields.io/badge/readme-中文-blue)](README.zh.md) 
 
-## Three key features
+## Three Core Features
 
-- **Flexible Scheduling Support**: Complete support for standard cron expressions, predefined descriptors (@hourly, @daily, @weekly, etc.), and custom interval (@every) syntax
-- **Concurrent Safe Execution**: Thread-safe task execution and management with panic recovery mechanism and dynamic task addition/removal functionality
-- **High-Performance Architecture**: Min-heap based task scheduling algorithm with optimized memory usage, ensuring optimal performance in high-volume task scenarios
+### Flexible Syntax
+Supports standard cron expressions, custom descriptors (`@hourly`, `@daily`, `@weekly`, etc.), and custom interval (`@every`) syntax
 
-## Flow
+### Concurrent Execution
+Concurrent task execution and management with panic recovery mechanism and dynamic task add/remove functionality
+
+### High-Performance Architecture
+Min-heap based task scheduling algorithm ensuring optimal performance in high-volume task scenarios
+
+## Flowchart
 
 <details>
-<summary>Click to show</summary>
+<summary>Click to view</summary>
 
 ```mermaid
 flowchart TD
-  A[Initialize] --> C[Setup Log System]
+  A[Initialize] --> C[Setup Logging System]
   C --> D[Initialize Task Heap]
   D --> H{Already Running?}
   H -->|Yes| I[No Action]
   H -->|No| J[Start Execution]
   
   J --> K[Calculate Initial Task Times]
-  K --> L[Initialize Min-Heap]
+  K --> L[Initialize Min Heap]
   L --> M[Start Main Loop]
   
   M --> N{Check Heap Status}
@@ -46,9 +52,9 @@ flowchart TD
   W --> X[Check if Enabled]
   X -->|Disabled| Y[Skip Task]
   X -->|Enabled| BB[Execute Task Function]
-  BB --> DD[Calculate Next Execution]
+  BB --> DD[Calculate Next Execution Time]
   BB -->|Panic| CC[Recover]
-  CC --> DD[Calculate Next Execution]
+  CC --> DD[Calculate Next Execution Time]
   DD --> EE[Re-add to Heap if Recurring]
   
   T --> FF[Parse Schedule]
@@ -64,7 +70,7 @@ flowchart TD
   HH --> M
   KK --> M
   
-  V --> LL[Wait for Running Tasks]
+  V --> LL[Wait for Running Tasks to Complete]
   LL --> MM[Close Channels]
   MM --> NN[Scheduler Stopped]
 ```
@@ -73,9 +79,9 @@ flowchart TD
 
 ## Dependencies
 
-- [`github.com/pardnchiu/go-logger`](https://github.com/pardnchiu/go-logger) - Logging system
+- [`github.com/pardnchiu/go-logger`](https://github.com/pardnchiu/go-logger)
 
-## How to use
+## Usage
 
 ### Installation
 ```bash
@@ -91,52 +97,50 @@ import (
   "log"
   "time"
   
-  cronJob "github.com/pardnchiu/go-cron"
+  cj "github.com/pardnchiu/go-cron"
 )
 
 func main() {
-  // Create configuration
-  config := cronJob.Config{
-  Log: &cronJob.Log{
-    Stdout: true,
-  },
-  Location: time.Local,
+  config := cj.Config{
+    Log: &cj.Log{
+      Stdout: true,
+    },
+    Location: time.Local,
   }
   
-  // Initialize cron scheduler
-  scheduler, err := cronJob.New(config)
+  // Initialize
+  scheduler, err := cj.New(config)
   if err != nil {
-  log.Fatal(err)
+    log.Fatal(err)
   }
   
   // Add tasks with different schedules
   
-  // Standard cron expression - every 5 minutes
+  // Every 5 minutes
   id1, err := scheduler.Add("*/5 * * * *", func() {
-  fmt.Println("Task runs every 5 minutes")
+    fmt.Println("Task executed every 5 minutes")
   })
   
-  // Predefined descriptor - hourly
+  // Every hour
   id2, err := scheduler.Add("@hourly", func() {
-  fmt.Println("Hourly task executed")
+    fmt.Println("Hourly task executed")
   })
   
-  // Custom interval - every 30 seconds
+  // Every 30 seconds
   id3, err := scheduler.Add("@every 30s", func() {
-  fmt.Println("Task runs every 30 seconds")
+    fmt.Println("Task executed every 30 seconds")
   })
   
   if err != nil {
-  log.Printf("Failed to add task: %v", err)
+    log.Printf("Failed to add task: %v", err)
   }
   
-  // Run for some time
   time.Sleep(10 * time.Minute)
   
-  // Remove specific task
+  // Remove task
   scheduler.Remove(id1)
   
-  // Stop scheduler and wait for completion
+  // Stop and wait for completion
   ctx := scheduler.Stop()
   <-ctx.Done()
   
@@ -148,7 +152,7 @@ func main() {
 
 ```go
 type Config struct {
-  Log      *Log           // Log configuration
+  Log      *Log           // Logging configuration
   Location *time.Location // Timezone setting (default: time.Local)
 }
 
@@ -161,9 +165,9 @@ type Log struct {
 }
 ```
 
-## Supported Schedule Formats
+## Supported Formats
 
-### Standard Cron Expressions
+### Standard Cron
 5-field format: `minute hour day month weekday`
 
 ```go
@@ -183,11 +187,11 @@ scheduler.Add("*/15 * * * *", task)
 scheduler.Add("0 6 1 * *", task)
 ```
 
-### Predefined Descriptors
+### Custom Descriptors
 
 ```go
 // January 1st at midnight
-scheduler.Add("@yearly", task)    // or "@annually"
+scheduler.Add("@yearly", task)
 
 // First day of month at midnight
 scheduler.Add("@monthly", task)
@@ -196,15 +200,11 @@ scheduler.Add("@monthly", task)
 scheduler.Add("@weekly", task)
 
 // Daily at midnight
-scheduler.Add("@daily", task)     // or "@midnight"
+scheduler.Add("@daily", task)
 
-// Every hour at minute 0
+// Every hour on the hour
 scheduler.Add("@hourly", task)
-```
 
-### Custom Intervals
-
-```go
 // Every 30 seconds
 scheduler.Add("@every 30s", task)
 
@@ -218,54 +218,54 @@ scheduler.Add("@every 2h", task)
 scheduler.Add("@every 12h", task)
 ```
 
-## Core Functions
+## Available Functions
 
 ### Scheduler Management
 
-- **New** - Create new scheduler instance
+- **New** - Create a new scheduler instance
   ```go
-  scheduler, err := cronJob.New(config)
+  scheduler, err := cj.New(config)
   ```
-  - Initializes logging system with configurable output and rotation
   - Sets up task heap and communication channels
-  - Automatically starts scheduling loop
+  
+- **Start** - Start the scheduler instance
+  ```go
+  scheduler.Start()
+  ```
+  - Starts the scheduling loop
 
-- **Stop** - Gracefully stop scheduler
+- **Stop** - Gracefully stop the scheduler
   ```go
   ctx := scheduler.Stop()
   <-ctx.Done() // Wait for all tasks to complete
   ```
   - Sends stop signal to main loop
   - Returns context that completes when all running tasks finish
-  - Ensures clean shutdown without interrupting tasks
+  - Ensures graceful shutdown without interrupting tasks
 
 ### Task Management
 
-- **Add** - Schedule new task
+- **Add** - Add a scheduled task
   ```go
   taskID, err := scheduler.Add("0 */2 * * *", func() {
-  // Task logic
+    // Task logic
   })
   ```
-  - Parses schedule expression or descriptor
+  - Parses schedule syntax
   - Generates unique task ID for management
-  - Thread-safe addition during runtime
 
-- **Remove** - Unschedule task
+- **Remove** - Cancel a scheduled task
   ```go
   scheduler.Remove(taskID)
   ```
   - Removes task from scheduling queue
   - Safe to call regardless of scheduler state
 
-## Execution Flow
-
-1. Create scheduler instance using [`New`](instance.go)
-2. Add tasks to schedule using [`Add`](add.go)
-3. Scheduler automatically calculates next execution times
-4. Tasks are triggered when execution time is reached
-5. Remove unwanted tasks using [`Remove`](remove.go)
-6. Gracefully shutdown scheduler using [`Stop`](instance.go)
+## Upcoming Features
+- Import task dependency management as in [php-async](https://github.com/pardnchiu/php-async)
+  - Pre-dependencies: Task B executes after Task A completes
+  - Post-dependencies: Task B executes before Task A starts
+  - Multiple dependencies: Task C waits for both Tasks A and B to complete
 
 ## License
 
