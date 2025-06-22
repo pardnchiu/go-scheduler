@@ -1,6 +1,7 @@
 # Cron Job Scheduler
 
-> Minimal scheduler for Golang supporting standard cron expressions, predefined descriptors, and custom intervals for easy scheduled task implementation in Go.
+> Minimal scheduler for Golang supporting standard cron expressions, predefined descriptors, and custom intervals for easy scheduled task implementation in Go.<br>
+> Originally designed for threat score decay calculation scheduling in [pardnchiu/go-ip-sentry](https://github.com/pardnchiu/go-ip-sentry).
 
 [![license](https://img.shields.io/github/license/pardnchiu/go-cron-job)](https://github.com/pardnchiu/go-cron-job/blob/main/LICENSE)
 [![version](https://img.shields.io/github/v/tag/pardnchiu/go-cron-job)](https://github.com/pardnchiu/go-cron-job/releases)

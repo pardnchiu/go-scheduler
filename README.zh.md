@@ -1,6 +1,7 @@
 # Cron 任務排程器
 
-> 支援標準 cron 表達式、預定義描述符和自訂間隔的 Golang 最小化排程器，輕鬆實現 Go 中的定時任務。
+> 支援標準 cron 表達式、預定義描述符和自訂間隔的 Golang 最小化排程器，輕鬆實現 Go 中的定時任務。<br>
+> 原本設計用於 [pardnchiu/go-ip-sentry](https://github.com/pardnchiu/go-ip-sentry) 威脅分數衰退計算所使用到的排程。
 
 [![license](https://img.shields.io/github/license/pardnchiu/go-cron-job)](https://github.com/pardnchiu/go-cron-job/blob/main/LICENSE)
 [![version](https://img.shields.io/github/v/tag/pardnchiu/go-cron-job)](https://github.com/pardnchiu/go-cron-job/releases)
