@@ -1,10 +1,13 @@
+> [!Note]
+> This content is translated by LLM. Original text can be found [here](README.zh.md)
+
 # Cron Job Scheduler (Golang)
 
 > A minimal Golang scheduler supporting standard cron expressions, custom descriptors, and custom intervals for easy scheduling in Go.<br>
 > Originally designed for the scheduling functionality used in [pardnchiu/go-ip-sentry](https://github.com/pardnchiu/go-ip-sentry) threat score decay calculations.
 
-[![license](https://img.shields.io/github/license/pardnchiu/go-cron-job)](LICENSE)
-[![version](https://img.shields.io/github/v/tag/pardnchiu/go-cron-job)](https://github.com/pardnchiu/go-cron-job/releases)
+[![license](https://img.shields.io/github/license/pardnchiu/go-cron)](LICENSE)
+[![version](https://img.shields.io/github/v/tag/pardnchiu/go-cron)](https://github.com/pardnchiu/go-cron/releases)
 [![readme](https://img.shields.io/badge/readme-中文-blue)](README.zh.md) 
 
 ## Three Core Features
@@ -275,7 +278,7 @@ This project is licensed under the [MIT](LICENSE) License.
 
 <img src="https://avatars.githubusercontent.com/u/25631760" align="left" width="96" height="96" style="margin-right: 0.5rem;">
 
-<h4 style="padding-top: 0">Pardn Chiu</h4>
+<h4 style="padding-top: 0">邱敬幃 Pardn Chiu</h4>
 
 <a href="mailto:dev@pardn.io" target="_blank">
   <img src="https://pardn.io/image/email.svg" width="48" height="48">
@@ -285,4 +288,4 @@ This project is licensed under the [MIT](LICENSE) License.
 
 ***
 
-©️ 2025 [Pardn Chiu](https://pardn.io)
+©️ 2025 [邱敬幃 Pardn Chiu](https://pardn.io)

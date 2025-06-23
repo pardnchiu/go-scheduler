@@ -1,11 +1,24 @@
-package cronJob
+package cron
+
+func (c *cron) List() []task {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	tasks := make([]task, 0, len(c.heap))
+	for _, t := range c.heap {
+		if t.Enable {
+			tasks = append(tasks, *t)
+		}
+	}
+	return tasks
+}
 
 func (h taskHeap) Len() int {
 	return len(h)
 }
 
 func (h taskHeap) Less(i, j int) bool {
-	return h[i].next.Before(h[j].next)
+	return h[i].Next.Before(h[j].Next)
 }
 
 func (h taskHeap) Swap(i, j int) {

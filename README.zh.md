@@ -3,8 +3,8 @@
 > 支援標準 cron 表達式、自定義描述符和自訂間隔的 Golang 最小化排程器，輕鬆使用 Go 撰寫排程。<br>
 > 原本是設計給 [pardnchiu/go-ip-sentry](https://github.com/pardnchiu/go-ip-sentry) 威脅分數衰退計算所使用到的排程功能。
 
-[![license](https://img.shields.io/github/license/pardnchiu/go-cron-job)](LICENSE)
-[![version](https://img.shields.io/github/v/tag/pardnchiu/go-cron-job)](https://github.com/pardnchiu/go-cron-job/releases)
+[![license](https://img.shields.io/github/license/pardnchiu/go-cron)](LICENSE)
+[![version](https://img.shields.io/github/v/tag/pardnchiu/go-cron)](https://github.com/pardnchiu/go-cron/releases)
 [![readme](https://img.shields.io/badge/readme-English-blue)](README.md) 
 
 ## 三大核心特色
@@ -275,7 +275,7 @@ scheduler.Add("@every 12h", task)
 
 <img src="https://avatars.githubusercontent.com/u/25631760" align="left" width="96" height="96" style="margin-right: 0.5rem;">
 
-<h4 style="padding-top: 0">Pardn Chiu</h4>
+<h4 style="padding-top: 0">邱敬幃 Pardn Chiu</h4>
 
 <a href="mailto:dev@pardn.io" target="_blank">
   <img src="https://pardn.io/image/email.svg" width="48" height="48">
@@ -285,4 +285,4 @@ scheduler.Add("@every 12h", task)
 
 ***
 
-©️ 2025 [Pardn Chiu](https://pardn.io)
+©️ 2025 [邱敬幃 Pardn Chiu](https://pardn.io)

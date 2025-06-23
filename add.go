@@ -1,10 +1,10 @@
-package cronJob
+package cron
 
 import (
 	"container/heap"
 )
 
-func (c *cron) Add(spec string, action func()) (int, error) {
+func (c *cron) Add(spec string, action func(), description ...string) (int, error) {
 	schedule, err := c.parser.parse(spec)
 	if err != nil {
 		return 0, c.logger.Error(err, "Failed to parse time spec")
@@ -15,10 +15,14 @@ func (c *cron) Add(spec string, action func()) (int, error) {
 
 	c.next++
 	entry := &task{
-		id:       c.next,
-		schedule: schedule,
-		action:   c.chain.then(action),
-		enable:   true,
+		ID:       c.next,
+		Schedule: schedule,
+		Action:   c.chain.then(action),
+		Enable:   true,
+	}
+
+	if len(description) > 0 {
+		entry.Description = description[0]
 	}
 
 	if c.running {
@@ -28,7 +32,7 @@ func (c *cron) Add(spec string, action func()) (int, error) {
 		heap.Init(&c.heap)
 	}
 
-	return entry.id, nil
+	return entry.ID, nil
 }
 
 func (t taskChain) then(a func()) func() {

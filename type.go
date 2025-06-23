@@ -1,4 +1,4 @@
-package cronJob
+package cron
 
 import (
 	"sync"
@@ -37,12 +37,13 @@ type cron struct {
 }
 
 type task struct {
-	id       int
-	schedule schedule
-	action   func()
-	next     time.Time
-	prev     time.Time
-	enable   bool
+	ID          int
+	Description string
+	Schedule    schedule
+	Action      func()
+	Next        time.Time
+	Prev        time.Time
+	Enable      bool
 }
 
 type schedule interface {
