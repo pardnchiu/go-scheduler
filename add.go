@@ -4,28 +4,28 @@ import (
 	"container/heap"
 )
 
-func (cron *cron) Add(spec string, action func()) (int, error) {
-	schedule, err := cron.parser.parse(spec)
+func (c *cron) Add(spec string, action func()) (int, error) {
+	schedule, err := c.parser.parse(spec)
 	if err != nil {
-		return 0, cron.logger.Error(err, "Failed to parse time spec")
+		return 0, c.logger.Error(err, "Failed to parse time spec")
 	}
 
-	cron.mutex.Lock()
-	defer cron.mutex.Unlock()
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
-	cron.next++
+	c.next++
 	entry := &task{
-		id:       cron.next,
+		id:       c.next,
 		schedule: schedule,
-		action:   cron.chain.then(action),
+		action:   c.chain.then(action),
 		enable:   true,
 	}
 
-	if !cron.running {
-		cron.heap = append(cron.heap, entry)
-		heap.Init(&cron.heap)
+	if c.running {
+		c.add <- entry
 	} else {
-		cron.add <- entry
+		c.heap = append(c.heap, entry)
+		heap.Init(&c.heap)
 	}
 
 	return entry.id, nil

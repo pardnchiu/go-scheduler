@@ -61,6 +61,8 @@ func TestCronEverySecond(t *testing.T) {
 		mu.Unlock()
 	})
 
+	c.Start()
+
 	time.Sleep(3*time.Second + 100*time.Millisecond)
 
 	ctx := c.Stop()
@@ -91,6 +93,8 @@ func TestCronStartStop(t *testing.T) {
 		executed = true
 		fmt.Print("Task executed\n", time.Now().Format("15:04:05"), "\n", executed)
 	})
+
+	c.Start()
 
 	time.Sleep(500 * time.Millisecond)
 
@@ -129,6 +133,8 @@ func TestCronMultipleTasks(t *testing.T) {
 		count2++
 		mu.Unlock()
 	})
+
+	c.Start()
 
 	time.Sleep(3*time.Second + 100*time.Millisecond)
 
@@ -191,6 +197,8 @@ func TestCronTaskPanic(t *testing.T) {
 		normalTaskExecuted = true
 		mu.Unlock()
 	})
+
+	c.Start()
 
 	time.Sleep(2*time.Second + 100*time.Millisecond)
 
