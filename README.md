@@ -1,3 +1,6 @@
+> [!Note]
+> This content is translated by LLM. Original text can be found [here](README.zh.md)
+
 # Cron Job Scheduler (Golang)
 
 > A minimal Golang scheduler supporting standard cron expressions, custom descriptors, and custom intervals for easy scheduling in Go.<br>
