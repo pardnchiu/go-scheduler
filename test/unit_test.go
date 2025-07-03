@@ -326,3 +326,106 @@ func TestCronListEmpty(t *testing.T) {
 		t.Fatalf("Expected empty list, got %d tasks", len(tasks))
 	}
 }
+
+func TestCronRemoveAll(t *testing.T) {
+	config := golangCron.Config{
+		Log: &golangCron.Log{
+			Stdout: false,
+		},
+	}
+	c, err := golangCron.New(config)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// 新增多個任務
+	_, err = c.Add("@every 1s", func() {}, "Task 1")
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	_, err = c.Add("@every 2s", func() {}, "Task 2")
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	_, err = c.Add("@every 3s", func() {}, "Task 3")
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// 驗證任務已新增
+	tasks := c.List()
+	if len(tasks) != 3 {
+		t.Fatalf("Expected 3 tasks, got %d", len(tasks))
+	}
+
+	// 移除所有任務
+	c.RemoveAll()
+
+	// 驗證所有任務已移除
+	tasks = c.List()
+	if len(tasks) != 0 {
+		t.Fatalf("Expected 0 tasks after RemoveAll, got %d", len(tasks))
+	}
+}
+
+func TestCronRemoveAllEmptyList(t *testing.T) {
+	config := golangCron.Config{
+		Log: &golangCron.Log{
+			Stdout: false,
+		},
+	}
+	c, err := golangCron.New(config)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// 在空清單上執行 RemoveAll
+	c.RemoveAll()
+
+	// 驗證清單仍為空
+	tasks := c.List()
+	if len(tasks) != 0 {
+		t.Fatalf("Expected 0 tasks, got %d", len(tasks))
+	}
+}
+
+func TestCronRemoveAllWithRunningTasks(t *testing.T) {
+	config := golangCron.Config{
+		Log: &golangCron.Log{
+			Stdout: false,
+		},
+	}
+	c, err := golangCron.New(config)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	// 新增任務
+	c.Add("@every 1s", func() {}, "Running Task")
+
+	// 啟動 cron
+	c.Start()
+
+	// 等待調度器啟動
+	time.Sleep(50 * time.Millisecond)
+
+	// 移除所有任務
+	c.RemoveAll()
+
+	time.Sleep(50 * time.Millisecond)
+
+	// 驗證任務已移除
+	if len(c.List()) != 0 {
+		t.Fatal("Expected 0 tasks after RemoveAll")
+	}
+
+	// 停止 cron
+	ctx := c.Stop()
+	select {
+	case <-ctx.Done():
+	case <-time.After(1 * time.Second):
+		t.Fatal("Stop should complete within 1 second")
+	}
+}

@@ -12,21 +12,27 @@ import (
 func New(c Config) (*cron, error) {
 	c.Log = validLoggerConfig(c)
 
+	location := time.Local
+	if c.Location != nil {
+		location = c.Location
+	}
+
 	logger, err := goLogger.New(c.Log)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to initialize `pardnchiu/go-logger`: %w", err)
 	}
 
 	cron := &cron{
-		logger:   logger,
-		heap:     make(taskHeap, 0),
-		chain:    taskChain{},
-		parser:   parser{},
-		stop:     make(chan struct{}),
-		add:      make(chan *task),
-		remove:   make(chan int),
-		location: time.Local,
-		running:  false,
+		logger:    logger,
+		heap:      make(taskHeap, 0),
+		chain:     taskChain{},
+		parser:    parser{},
+		stop:      make(chan struct{}),
+		add:       make(chan *task),
+		remove:    make(chan int64),
+		removeAll: make(chan struct{}),
+		location:  location,
+		running:   false,
 	}
 
 	return cron, nil
@@ -74,7 +80,7 @@ func (c *cron) Start() {
 							go func() {
 								defer func() {
 									if r := recover(); r != nil {
-										fmt.Printf("Task panic recovered: %v\n", r)
+										c.logger.Info("Recovered from panic [task: %d]", e.ID)
 									}
 								}()
 								defer c.wait.Done()
@@ -101,7 +107,23 @@ func (c *cron) Start() {
 							timer.Stop()
 						}
 						now = time.Now().In(c.location)
-						c.Remove(id)
+						for i, entry := range c.heap {
+							if entry.ID == id {
+								entry.Enable = false
+								heap.Remove(&c.heap, i)
+								break
+							}
+						}
+
+					case <-c.removeAll:
+						if timer != nil {
+							timer.Stop()
+						}
+						now = time.Now().In(c.location)
+						// 完全清空 heap
+						for len(c.heap) > 0 {
+							heap.Pop(&c.heap)
+						}
 
 					case <-c.stop:
 						if timer != nil {
