@@ -1,4 +1,4 @@
-package cronJob
+package cron
 
 import (
 	"fmt"

@@ -1,4 +1,4 @@
-package cronJob
+package cron
 
 import (
 	"container/heap"
@@ -43,7 +43,7 @@ func (c *cron) Start() {
 			now := time.Now().In(c.location)
 
 			for _, entry := range c.heap {
-				entry.next = entry.schedule.next(now)
+				entry.Next = entry.Schedule.next(now)
 			}
 			heap.Init(&c.heap)
 
@@ -51,10 +51,10 @@ func (c *cron) Start() {
 				var timer *time.Timer
 				var timerC <-chan time.Time
 
-				if len(c.heap) == 0 || c.heap[0].next.IsZero() {
+				if len(c.heap) == 0 || c.heap[0].Next.IsZero() {
 					timerC = nil
 				} else {
-					timer = time.NewTimer(c.heap[0].next.Sub(now))
+					timer = time.NewTimer(c.heap[0].Next.Sub(now))
 					timerC = timer.C
 				}
 
@@ -63,10 +63,10 @@ func (c *cron) Start() {
 					case now = <-timerC:
 						now = now.In(c.location)
 
-						for len(c.heap) > 0 && (c.heap[0].next.Before(now) || c.heap[0].next.Equal(now)) {
+						for len(c.heap) > 0 && (c.heap[0].Next.Before(now) || c.heap[0].Next.Equal(now)) {
 							e := heap.Pop(&c.heap).(*task)
 
-							if !e.enable {
+							if !e.Enable {
 								continue
 							}
 
@@ -78,12 +78,12 @@ func (c *cron) Start() {
 									}
 								}()
 								defer c.wait.Done()
-								e.action()
+								e.Action()
 							}()
 
-							e.prev = e.next
-							e.next = e.schedule.next(now)
-							if !e.next.IsZero() {
+							e.Prev = e.Next
+							e.Next = e.Schedule.next(now)
+							if !e.Next.IsZero() {
 								heap.Push(&c.heap, e)
 							}
 						}
@@ -93,7 +93,7 @@ func (c *cron) Start() {
 							timer.Stop()
 						}
 						now = time.Now().In(c.location)
-						newEntry.next = newEntry.schedule.next(now)
+						newEntry.Next = newEntry.Schedule.next(now)
 						heap.Push(&c.heap, newEntry)
 
 					case id := <-c.remove:
