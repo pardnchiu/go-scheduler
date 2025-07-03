@@ -9,7 +9,7 @@ func (c *cron) RemoveAll() {
 	defer c.mutex.Unlock()
 
 	if c.running {
-		c.remove <- 0
+		c.removeAll <- struct{}{}
 		return
 	}
 
@@ -19,7 +19,7 @@ func (c *cron) RemoveAll() {
 	heap.Init(&c.heap)
 }
 
-func (c *cron) Remove(id int) {
+func (c *cron) Remove(id int64) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 

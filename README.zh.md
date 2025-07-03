@@ -1,6 +1,6 @@
 # Cron 任務排程 (Golang)
 
-> 支援標準 cron 表達式、自定義描述符和自訂間隔的 Golang 最小化排程器，輕鬆使用 Go 撰寫排程。<br>
+> 極致輕量的 Golang 排程器，支援標準 cron 表達式、自定義描述符和自訂間隔的 Golang 最小化排程器，輕鬆使用 Go 撰寫排程。<br>
 > 原本是設計給 [pardnchiu/go-ip-sentry](https://github.com/pardnchiu/go-ip-sentry) 威脅分數衰退計算所使用到的排程功能。
 
 [![license](https://img.shields.io/github/license/pardnchiu/go-cron)](LICENSE)
@@ -9,14 +9,14 @@
 
 ## 三大核心特色
 
+### 超低學期成本
+使用 Go 標準庫的 heap，專注核心功能，記憶體使用極低，零學習成本，只要會寫 cron 表達式就基本會使用
+
 ### 靈活語法
 支援標準 cron 表達式、自定義描述符（`@hourly`、`@daily`、`@weekly` 等）和自訂間隔（`@every`）語法
 
-### 併發執行
-併發的任務執行和管理，具有 panic 恢復機制和動態任務新增/移除功能
-
 ### 高效架構
-基於最小堆的任務排程演算法，確保在大量任務場景中的最佳效能
+基於最小堆的任務排程演算法，併發的任務執行和管理，具有 panic 恢復機制和動態任務新增/移除功能，並確保在大量任務場景中的最佳效能
 
 ## 流程圖
 
@@ -25,54 +25,51 @@
 
 ```mermaid
 flowchart TD
-  A[初始化] --> C[設置記錄系統]
-  C --> D[初始化任務堆]
-  D --> H{已在執行中？}
-  H -->|是| I[無動作]
-  H -->|否| J[開始執行]
+  A[初始化] --> B[設置記錄系統]
+  B --> C[初始化任務堆]
+  C --> D{已在執行中？}
+  D -->|是| D1[無動作]
+  D -->|否| D2[開始執行]
   
-  J --> K[計算初始任務時間]
-  K --> L[初始化最小堆]
-  L --> M[啟動主迴圈]
+  D2 --> E[計算初始任務時間]
+  E --> F[初始化最小堆]
+  F --> G[啟動主迴圈]
   
-  M --> N{檢查堆狀態}
-  N -->|空的| O[等待事件]
-  N -->|有任務| P[設置計時器到下個任務]
-  
-  O --> Q[監聽事件]
-  P --> Q
+  G --> H{檢查堆狀態}
+  G -->|無任務<br>等待事件| Q[監聽事件]
+  G -->|有任務<br>設置計時器到下個任務| Q
   
   Q --> R{事件類型}
-  R -->|計時器到期| S[執行到期任務]
-  R -->|新增任務| T[新增到堆]
-  R -->|移除任務| U[從堆中移除]
-  R -->|停止信號| V[清理並退出]
+  R -->|計時器到期| R1[執行到期任務]
+  R -->|新增任務| R2[新增到堆]
+  R -->|移除任務| R3[從堆中移除]
+  R -->|停止信號| R4[清理並退出]
   
-  S --> W[從堆中彈出任務]
-  W --> X[檢查是否啟用]
-  X -->|停用| Y[跳過任務]
-  X -->|啟用| BB[執行任務函數]
-  BB --> DD[計算下次執行時間]
-  BB -->|Panic| CC[恢復]
-  CC --> DD[計算下次執行時間]
-  DD --> EE[如為重複任務則重新加入堆]
+  R1 --> S[從堆中彈出任務]
+  S --> T{檢查是否啟用}
+  T -->|停用| T0[跳過任務]
+  T0 --> G
+  T -->|啟用| T1{執行任務函數}
+  T1 --> T11[計算下次執行時間]
+  T1 -->|Panic| T10[恢復]
+  T10 --> T11[計算下次執行時間]
+  T11 --> U[如為重複任務則重新加入堆]
   
-  T --> FF[解析排程]
-  FF --> GG[建立任務物件]
-  GG --> HH[新增到堆]
+  R2 --> V[解析排程]
+  V --> W[建立任務物件]
+  W --> X[新增到堆]
   
-  U --> II[透過 ID 尋找任務]
-  II --> JJ[標記為停用]
-  JJ --> KK[從堆中移除]
+  R3 --> Y[透過 ID 尋找任務]
+  Y --> Z[標記為停用]
+  Z --> AA[從堆中移除]
   
-  Y --> M
-  EE --> M
-  HH --> M
-  KK --> M
+  U --> G
+  X --> G
+  AA --> G
   
-  V --> LL[等待執行中任務完成]
-  LL --> MM[關閉通道]
-  MM --> NN[排程器已停止]
+  R4 --> BB[等待執行中任務完成]
+  BB --> CC[關閉通道]
+  CC --> DD[排程器已停止]
 ```
 
 </details>
@@ -97,54 +94,44 @@ import (
   "log"
   "time"
   
-  cj "github.com/pardnchiu/go-cron"
+  cron "github.com/pardnchiu/go-cron"
 )
 
 func main() {
-  config := cj.Config{
-    Log: &cj.Log{
-      Stdout: true,
-    },
+  // 初始化（可選配置）
+  scheduler, err := cron.New(cron.Config{
+    Log: &cron.Log{Stdout: true},
     Location: time.Local,
-  }
-  
-  // 初始化
-  scheduler, err := cj.New(config)
+  })
   if err != nil {
     log.Fatal(err)
   }
   
-  // 使用不同排程新增任務
+  // 啟動排程器
+  scheduler.Start()
   
-  // 每 5 分鐘
-  id1, err := scheduler.Add("*/5 * * * *", func() {
-    fmt.Println("任務每 5 分鐘執行一次")
+  // 添加任務
+  id1, _ := scheduler.Add("@daily", func() {
+    fmt.Println("每日執行")
+  }, "備份任務")
+  
+  id2, _ := scheduler.Add("@every 5m", func() {
+    fmt.Println("每 5 分鐘執行")
   })
   
-  // 每小時
-  id2, err := scheduler.Add("@hourly", func() {
-    fmt.Println("每小時任務已執行")
-  })
+  // 查看任務列表
+  tasks := scheduler.List()
+  fmt.Printf("目前有 %d 個任務\n", len(tasks))
   
-  // 每 30 秒
-  id3, err := scheduler.Add("@every 30s", func() {
-    fmt.Println("任務每 30 秒執行一次")
-  })
-  
-  if err != nil {
-    log.Printf("新增任務失敗: %v", err)
-  }
-  
-  time.Sleep(10 * time.Minute)
-  
-  // 移除任務
+  // 移除特定任務
   scheduler.Remove(id1)
   
-  // 停止並等待完成
+  // 移除所有任務
+  scheduler.RemoveAll()
+  
+  // 優雅停止
   ctx := scheduler.Stop()
   <-ctx.Done()
-  
-  fmt.Println("排程器已正常停止")
 }
 ```
 
@@ -224,7 +211,7 @@ scheduler.Add("@every 12h", task)
 
 - **New** - 建立新的排程實例
   ```go
-  scheduler, err := cj.New(config)
+  scheduler, err := cron.New(config)
   ```
   - 設置任務堆和通訊通道
 
@@ -260,6 +247,18 @@ scheduler.Add("@every 12h", task)
   ```
   - 從排程佇列中移除任務
   - 無論排程器狀態如何都可安全呼叫
+
+- **RemoveAll** -  移除所有任務
+  ```go
+  scheduler.RemoveAll()
+  ```
+  - 立即移除所有排程任務
+  - 不影響正在執行的任務
+
+- **List** - 獲取任務列表
+  ```go
+  tasks := scheduler.List()
+  ```
 
 ## 功能預告
 - 導入如 [php-async](https://github.com/pardnchiu/php-async) 中的任務依賴關係管理

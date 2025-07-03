@@ -22,22 +22,23 @@ type Config struct {
 }
 
 type cron struct {
-	logger   *Logger
-	mutex    sync.Mutex
-	wait     sync.WaitGroup
-	heap     taskHeap
-	chain    taskChain
-	parser   parser
-	stop     chan struct{}
-	add      chan *task
-	remove   chan int
-	location *time.Location
-	next     int
-	running  bool
+	logger    *Logger
+	mutex     sync.Mutex
+	wait      sync.WaitGroup
+	heap      taskHeap
+	chain     taskChain
+	parser    parser
+	stop      chan struct{}
+	add       chan *task
+	remove    chan int64
+	removeAll chan struct{}
+	location  *time.Location
+	next      int64
+	running   bool
 }
 
 type task struct {
-	ID          int
+	ID          int64
 	Description string
 	Schedule    schedule
 	Action      func()

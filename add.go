@@ -2,9 +2,10 @@ package cron
 
 import (
 	"container/heap"
+	"sync/atomic"
 )
 
-func (c *cron) Add(spec string, action func(), description ...string) (int, error) {
+func (c *cron) Add(spec string, action func(), description ...string) (int64, error) {
 	schedule, err := c.parser.parse(spec)
 	if err != nil {
 		return 0, c.logger.Error(err, "Failed to parse time spec")
@@ -13,9 +14,8 @@ func (c *cron) Add(spec string, action func(), description ...string) (int, erro
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	c.next++
 	entry := &task{
-		ID:       c.next,
+		ID:       atomic.AddInt64(&c.next, 1),
 		Schedule: schedule,
 		Action:   c.chain.then(action),
 		Enable:   true,

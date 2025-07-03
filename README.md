@@ -3,79 +3,76 @@
 
 # Cron Job Scheduler (Golang)
 
-> A minimal Golang scheduler supporting standard cron expressions, custom descriptors, and custom intervals for easy scheduling in Go.<br>
-> Originally designed for the scheduling functionality used in [pardnchiu/go-ip-sentry](https://github.com/pardnchiu/go-ip-sentry) threat score decay calculations.
+> Ultra-lightweight Golang scheduler supporting standard cron expressions, custom descriptors, and custom intervals. A minimalist scheduler for Go that makes scheduling effortless.<br>
+> Originally designed for the scheduling functionality used in threat score decay calculations for [pardnchiu/go-ip-sentry](https://github.com/pardnchiu/go-ip-sentry).
 
 [![license](https://img.shields.io/github/license/pardnchiu/go-cron)](LICENSE)
 [![version](https://img.shields.io/github/v/tag/pardnchiu/go-cron)](https://github.com/pardnchiu/go-cron/releases)
-[![readme](https://img.shields.io/badge/readme-中文-blue)](README.zh.md) 
+[![readme](https://img.shields.io/badge/readme-繁體中文-blue)](README.zh.md) 
 
 ## Three Core Features
+
+### Ultra-Low Learning Curve
+Built with Go's standard library heap, focusing on core functionality with minimal memory usage and zero learning cost - if you can write cron expressions, you can use this
 
 ### Flexible Syntax
 Supports standard cron expressions, custom descriptors (`@hourly`, `@daily`, `@weekly`, etc.), and custom interval (`@every`) syntax
 
-### Concurrent Execution
-Concurrent task execution and management with panic recovery mechanism and dynamic task add/remove functionality
+### Efficient Architecture
+Min-heap based task scheduling algorithm with concurrent task execution and management, panic recovery mechanism, and dynamic task addition/removal, ensuring optimal performance in high-volume task scenarios
 
-### High-Performance Architecture
-Min-heap based task scheduling algorithm ensuring optimal performance in high-volume task scenarios
-
-## Flowchart
+## Flow Chart
 
 <details>
 <summary>Click to view</summary>
 
 ```mermaid
 flowchart TD
-  A[Initialize] --> C[Setup Logging System]
-  C --> D[Initialize Task Heap]
-  D --> H{Already Running?}
-  H -->|Yes| I[No Action]
-  H -->|No| J[Start Execution]
+  A[Initialize] --> B[Setup Logger]
+  B --> C[Initialize Task Heap]
+  C --> D{Already Running?}
+  D -->|Yes| D1[No Action]
+  D -->|No| D2[Start Execution]
   
-  J --> K[Calculate Initial Task Times]
-  K --> L[Initialize Min Heap]
-  L --> M[Start Main Loop]
+  D2 --> E[Calculate Initial Task Times]
+  E --> F[Initialize Min Heap]
+  F --> G[Start Main Loop]
   
-  M --> N{Check Heap Status}
-  N -->|Empty| O[Wait for Events]
-  N -->|Has Tasks| P[Set Timer to Next Task]
-  
-  O --> Q[Listen for Events]
-  P --> Q
+  G --> H{Check Heap Status}
+  G -->|No Tasks<br>Wait for Events| Q[Listen for Events]
+  G -->|Has Tasks<br>Set Timer to Next Task| Q
   
   Q --> R{Event Type}
-  R -->|Timer Expired| S[Execute Due Tasks]
-  R -->|Add Task| T[Add to Heap]
-  R -->|Remove Task| U[Remove from Heap]
-  R -->|Stop Signal| V[Cleanup and Exit]
+  R -->|Timer Expires| R1[Execute Due Tasks]
+  R -->|Add Task| R2[Add to Heap]
+  R -->|Remove Task| R3[Remove from Heap]
+  R -->|Stop Signal| R4[Cleanup and Exit]
   
-  S --> W[Pop Task from Heap]
-  W --> X[Check if Enabled]
-  X -->|Disabled| Y[Skip Task]
-  X -->|Enabled| BB[Execute Task Function]
-  BB --> DD[Calculate Next Execution Time]
-  BB -->|Panic| CC[Recover]
-  CC --> DD[Calculate Next Execution Time]
-  DD --> EE[Re-add to Heap if Recurring]
+  R1 --> S[Pop Task from Heap]
+  S --> T{Check if Enabled}
+  T -->|Disabled| T0[Skip Task]
+  T0 --> G
+  T -->|Enabled| T1{Execute Task Function}
+  T1 --> T11[Calculate Next Execution Time]
+  T1 -->|Panic| T10[Recover]
+  T10 --> T11[Calculate Next Execution Time]
+  T11 --> U[Re-add to Heap if Recurring]
   
-  T --> FF[Parse Schedule]
-  FF --> GG[Create Task Object]
-  GG --> HH[Add to Heap]
+  R2 --> V[Parse Schedule]
+  V --> W[Create Task Object]
+  W --> X[Add to Heap]
   
-  U --> II[Find Task by ID]
-  II --> JJ[Mark as Disabled]
-  JJ --> KK[Remove from Heap]
+  R3 --> Y[Find Task by ID]
+  Y --> Z[Mark as Disabled]
+  Z --> AA[Remove from Heap]
   
-  Y --> M
-  EE --> M
-  HH --> M
-  KK --> M
+  U --> G
+  X --> G
+  AA --> G
   
-  V --> LL[Wait for Running Tasks to Complete]
-  LL --> MM[Close Channels]
-  MM --> NN[Scheduler Stopped]
+  R4 --> BB[Wait for Running Tasks to Complete]
+  BB --> CC[Close Channels]
+  CC --> DD[Scheduler Stopped]
 ```
 
 </details>
@@ -100,54 +97,44 @@ import (
   "log"
   "time"
   
-  cj "github.com/pardnchiu/go-cron"
+  cron "github.com/pardnchiu/go-cron"
 )
 
 func main() {
-  config := cj.Config{
-    Log: &cj.Log{
-      Stdout: true,
-    },
+  // Initialize (optional configuration)
+  scheduler, err := cron.New(cron.Config{
+    Log: &cron.Log{Stdout: true},
     Location: time.Local,
-  }
-  
-  // Initialize
-  scheduler, err := cj.New(config)
+  })
   if err != nil {
     log.Fatal(err)
   }
   
-  // Add tasks with different schedules
+  // Start scheduler
+  scheduler.Start()
   
-  // Every 5 minutes
-  id1, err := scheduler.Add("*/5 * * * *", func() {
-    fmt.Println("Task executed every 5 minutes")
+  // Add tasks
+  id1, _ := scheduler.Add("@daily", func() {
+    fmt.Println("Daily execution")
+  }, "Backup task")
+  
+  id2, _ := scheduler.Add("@every 5m", func() {
+    fmt.Println("Execute every 5 minutes")
   })
   
-  // Every hour
-  id2, err := scheduler.Add("@hourly", func() {
-    fmt.Println("Hourly task executed")
-  })
+  // View task list
+  tasks := scheduler.List()
+  fmt.Printf("Currently have %d tasks\n", len(tasks))
   
-  // Every 30 seconds
-  id3, err := scheduler.Add("@every 30s", func() {
-    fmt.Println("Task executed every 30 seconds")
-  })
-  
-  if err != nil {
-    log.Printf("Failed to add task: %v", err)
-  }
-  
-  time.Sleep(10 * time.Minute)
-  
-  // Remove task
+  // Remove specific task
   scheduler.Remove(id1)
   
-  // Stop and wait for completion
+  // Remove all tasks
+  scheduler.RemoveAll()
+  
+  // Graceful shutdown
   ctx := scheduler.Stop()
   <-ctx.Done()
-  
-  fmt.Println("Scheduler stopped gracefully")
 }
 ```
 
@@ -155,7 +142,7 @@ func main() {
 
 ```go
 type Config struct {
-  Log      *Log           // Logging configuration
+  Log      *Log           // Logger configuration
   Location *time.Location // Timezone setting (default: time.Local)
 }
 
@@ -199,7 +186,7 @@ scheduler.Add("@yearly", task)
 // First day of month at midnight
 scheduler.Add("@monthly", task)
 
-// Sunday at midnight
+// Every Sunday at midnight
 scheduler.Add("@weekly", task)
 
 // Daily at midnight
@@ -225,19 +212,19 @@ scheduler.Add("@every 12h", task)
 
 ### Scheduler Management
 
-- **New** - Create a new scheduler instance
+- **New** - Create new scheduler instance
   ```go
-  scheduler, err := cj.New(config)
+  scheduler, err := cron.New(config)
   ```
   - Sets up task heap and communication channels
-  
-- **Start** - Start the scheduler instance
+
+- **Start** - Start scheduler instance
   ```go
   scheduler.Start()
   ```
-  - Starts the scheduling loop
+  - Starts scheduling loop
 
-- **Stop** - Gracefully stop the scheduler
+- **Stop** - Gracefully stop scheduler
   ```go
   ctx := scheduler.Stop()
   <-ctx.Done() // Wait for all tasks to complete
@@ -248,7 +235,7 @@ scheduler.Add("@every 12h", task)
 
 ### Task Management
 
-- **Add** - Add a scheduled task
+- **Add** - Add scheduled task
   ```go
   taskID, err := scheduler.Add("0 */2 * * *", func() {
     // Task logic
@@ -257,18 +244,30 @@ scheduler.Add("@every 12h", task)
   - Parses schedule syntax
   - Generates unique task ID for management
 
-- **Remove** - Cancel a scheduled task
+- **Remove** - Cancel task schedule
   ```go
   scheduler.Remove(taskID)
   ```
   - Removes task from scheduling queue
   - Safe to call regardless of scheduler state
 
+- **RemoveAll** - Remove all tasks
+  ```go
+  scheduler.RemoveAll()
+  ```
+  - Immediately removes all scheduled tasks
+  - Does not affect currently running tasks
+
+- **List** - Get task list
+  ```go
+  tasks := scheduler.List()
+  ```
+
 ## Upcoming Features
-- Import task dependency management as in [php-async](https://github.com/pardnchiu/php-async)
+- Task dependency management similar to [php-async](https://github.com/pardnchiu/php-async)
   - Pre-dependencies: Task B executes after Task A completes
   - Post-dependencies: Task B executes before Task A starts
-  - Multiple dependencies: Task C waits for both Tasks A and B to complete
+  - Multiple dependencies: Task C waits for both Tasks A and B to complete before executing
 
 ## License
 

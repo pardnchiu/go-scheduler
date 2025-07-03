@@ -96,18 +96,18 @@ func parseDescriptor(spec string) (schedule, error) {
 	if strings.HasPrefix(spec, "@every ") {
 		duration, err := time.ParseDuration(spec[7:])
 		if err != nil {
-			return nil, fmt.Errorf("解析 @every 失敗: %v", err)
+			return nil, fmt.Errorf("Failed to parse @every: %v", err)
 		}
 		return delayScheduleResult{duration}, nil
 	}
 
-	return nil, fmt.Errorf("未知描述符: %s", spec)
+	return nil, fmt.Errorf("Failed to parse: %s", spec)
 }
 
 func parseCronSpec(spec string) (schedule, error) {
 	fields := strings.Fields(spec)
 	if len(fields) != 5 {
-		return nil, fmt.Errorf("需要 5 個欄位")
+		return nil, fmt.Errorf("Requires 5 values, got %d", len(fields))
 	}
 
 	schedule := &scheduleResult{}
@@ -152,7 +152,7 @@ func parseField(field string, min, max int) (scheduleField, error) {
 	}
 
 	if value < min || value > max {
-		return scheduleField{}, fmt.Errorf("值超出範圍")
+		return scheduleField{}, fmt.Errorf("Out of range [%d, %d], got [%d]", min, max, value)
 	}
 
 	return scheduleField{value, false, 0}, nil
