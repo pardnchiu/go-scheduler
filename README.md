@@ -8,7 +8,7 @@
 
 [![license](https://img.shields.io/github/license/pardnchiu/go-cron)](LICENSE)
 [![version](https://img.shields.io/github/v/tag/pardnchiu/go-cron)](https://github.com/pardnchiu/go-cron/releases)
-[![readme](https://img.shields.io/badge/readme-繁體中文-blue)](README.zh.md) 
+[![readme](https://img.shields.io/badge/readme-繁體中文-blue)](README.zh.md)
 
 ## Three Core Features
 
@@ -33,21 +33,21 @@ flowchart TD
   C --> D{Already Running?}
   D -->|Yes| D1[No Action]
   D -->|No| D2[Start Execution]
-  
+
   D2 --> E[Calculate Initial Task Times]
   E --> F[Initialize Min Heap]
   F --> G[Start Main Loop]
-  
+
   G --> H{Check Heap Status}
   G -->|No Tasks<br>Wait for Events| Q[Listen for Events]
   G -->|Has Tasks<br>Set Timer to Next Task| Q
-  
+
   Q --> R{Event Type}
   R -->|Timer Expires| R1[Execute Due Tasks]
   R -->|Add Task| R2[Add to Heap]
   R -->|Remove Task| R3[Remove from Heap]
   R -->|Stop Signal| R4[Cleanup and Exit]
-  
+
   R1 --> S[Pop Task from Heap]
   S --> T{Check if Enabled}
   T -->|Disabled| T0[Skip Task]
@@ -57,29 +57,25 @@ flowchart TD
   T1 -->|Panic| T10[Recover]
   T10 --> T11[Calculate Next Execution Time]
   T11 --> U[Re-add to Heap if Recurring]
-  
+
   R2 --> V[Parse Schedule]
   V --> W[Create Task Object]
   W --> X[Add to Heap]
-  
+
   R3 --> Y[Find Task by ID]
   Y --> Z[Mark as Disabled]
   Z --> AA[Remove from Heap]
-  
+
   U --> G
   X --> G
   AA --> G
-  
+
   R4 --> BB[Wait for Running Tasks to Complete]
   BB --> CC[Close Channels]
   CC --> DD[Scheduler Stopped]
 ```
 
 </details>
-
-## Dependencies
-
-- [`github.com/pardnchiu/go-logger`](https://github.com/pardnchiu/go-logger): if you don't need this, just fork it and replace with your preferred solution.
 
 ## Usage
 
@@ -96,7 +92,7 @@ import (
   "fmt"
   "log"
   "time"
-  
+
   cron "github.com/pardnchiu/go-cron"
 )
 
@@ -109,40 +105,92 @@ func main() {
   if err != nil {
     log.Fatal(err)
   }
-  
+
   // Start scheduler
   scheduler.Start()
-  
+
   // Add tasks
   id1, _ := scheduler.Add("@daily", func() {
     fmt.Println("Daily execution")
   }, "Backup task")
-  
+
   id2, _ := scheduler.Add("@every 5m", func() {
     fmt.Println("Execute every 5 minutes")
   })
-  
+
   // View task list
   tasks := scheduler.List()
   fmt.Printf("Currently have %d tasks\n", len(tasks))
-  
+
   // Remove specific task
   scheduler.Remove(id1)
-  
+
   // Remove all tasks
   scheduler.RemoveAll()
-  
+
   // Graceful shutdown
   ctx := scheduler.Stop()
   <-ctx.Done()
 }
 ```
 
+## Flexible Logging Support
+
+The package supports multiple logging options through a simple `Logger` interface:
+
+### Using Standard Logger
+```go
+stdLogger := log.New(os.Stdout, "CRON: ", log.LstdFlags)
+scheduler, err := cron.New(cron.Config{
+  Logger: cron.NewLoggerFromStdLogger(stdLogger),
+})
+```
+
+### Using io.Writer
+```go
+logFile, err := os.OpenFile("cron.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+scheduler, err := cron.New(cron.Config{
+  Logger: cron.NewLoggerFromWriter(logFile),
+})
+```
+
+### Using Logrus
+```go
+import "github.com/sirupsen/logrus"
+
+type LogrusAdapter struct { *logrus.Logger }
+func (l *LogrusAdapter) Info(format string, args ...interface{}) { l.Logger.Infof(format, args...) }
+func (l *LogrusAdapter) Error(format string, args ...interface{}) { l.Logger.Errorf(format, args...) }
+func (l *LogrusAdapter) Debug(format string, args ...interface{}) { l.Logger.Debugf(format, args...) }
+
+logrusLogger := logrus.New()
+scheduler, err := cron.New(cron.Config{
+  Logger: &LogrusAdapter{Logger: logrusLogger},
+})
+```
+
+### Using Slog
+```go
+import "log/slog"
+
+slogLogger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+scheduler, err := cron.New(cron.Config{
+  Logger: cron.NewLoggerFromSlog(slogLogger),
+})
+```
+
+### Silent Logger
+```go
+scheduler, err := cron.New(cron.Config{
+  Logger: &cron.NoOpLogger{}, // No logging output
+})
+```
+
 ## Configuration
 
 ```go
 type Config struct {
-  Log      *Log           // Logger configuration
+  Logger   Logger         // Logger interface - any logging framework
   Location *time.Location // Timezone setting (default: time.Local)
 }
 
