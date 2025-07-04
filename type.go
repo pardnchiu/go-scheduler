@@ -1,28 +1,30 @@
 package cron
 
 import (
+	"log"
 	"sync"
 	"time"
-
-	goLogger "github.com/pardnchiu/go-logger"
 )
 
-const (
-	defaultLogPath      = "./logs/cron.log"
-	defaultLogMaxSize   = 16 * 1024 * 1024
-	defaultLogMaxBackup = 5
-)
+type Logger interface {
+	Info(format string, args ...any)
+	Error(format string, args ...any)
+	Debug(format string, args ...any)
+}
 
-type Log = goLogger.Log
-type Logger = goLogger.Logger
+type StandardLogger struct {
+	*log.Logger
+}
+
+type NoOpLogger struct{}
 
 type Config struct {
-	Log      *Log
+	Logger   Logger
 	Location *time.Location
 }
 
 type cron struct {
-	logger    *Logger
+	logger    Logger
 	mutex     sync.Mutex
 	wait      sync.WaitGroup
 	heap      taskHeap
