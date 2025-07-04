@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	goCron "github.com/pardnchiu/go-cron"
 	golangCron "github.com/pardnchiu/go-cron"
 )
 
@@ -427,5 +428,145 @@ func TestCronRemoveAllWithRunningTasks(t *testing.T) {
 	case <-ctx.Done():
 	case <-time.After(1 * time.Second):
 		t.Fatal("Stop should complete within 1 second")
+	}
+}
+func TestTaskTimeout(t *testing.T) {
+	config := goCron.Config{
+		Log: &goCron.Log{
+			Path:   "./test.log",
+			Stdout: false,
+		},
+	}
+
+	cron, err := goCron.New(config)
+	if err != nil {
+		t.Fatalf("建立 cron 失敗: %v", err)
+	}
+
+	var timeoutTriggered bool
+	var mu sync.Mutex
+
+	// 使用 @every 1s 確保任務會立即開始
+	_, err = cron.Add("@every 1s", func() {
+		time.Sleep(2 * time.Second) // 任務執行時間超過超時限制
+	}, "超時測試", 500*time.Millisecond, func() {
+		mu.Lock()
+		timeoutTriggered = true
+		mu.Unlock()
+	})
+
+	if err != nil {
+		t.Fatalf("添加任務失敗: %v", err)
+	}
+
+	cron.Start()
+	defer func() {
+		ctx := cron.Stop()
+		<-ctx.Done()
+	}()
+
+	// 等待足夠時間讓任務執行並觸發超時
+	time.Sleep(3 * time.Second)
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	if !timeoutTriggered {
+		t.Error("應該觸發超時回調")
+	}
+}
+
+func TestTaskWithoutTimeout(t *testing.T) {
+	config := goCron.Config{
+		Log: &goCron.Log{
+			Path:   "./test.log",
+			Stdout: false,
+		},
+	}
+
+	cron, err := goCron.New(config)
+	if err != nil {
+		t.Fatalf("建立 cron 失敗: %v", err)
+	}
+
+	var taskCompleted bool
+	var mu sync.Mutex
+
+	// 使用 @every 1s 確保任務會立即開始
+	_, err = cron.Add("@every 1s", func() {
+		time.Sleep(200 * time.Millisecond)
+		mu.Lock()
+		taskCompleted = true
+		mu.Unlock()
+	}, "無延遲測試")
+
+	if err != nil {
+		t.Fatalf("添加任務失敗: %v", err)
+	}
+
+	cron.Start()
+	defer func() {
+		ctx := cron.Stop()
+		<-ctx.Done()
+	}()
+
+	time.Sleep(2 * time.Second)
+
+	mu.Lock()
+	if !taskCompleted {
+		t.Error("任務應該正常完成")
+	}
+	mu.Unlock()
+}
+
+func TestTaskNormalCompletionWithDelay(t *testing.T) {
+	config := goCron.Config{
+		Log: &goCron.Log{
+			Path:   "./test.log",
+			Stdout: false,
+		},
+	}
+
+	cron, err := goCron.New(config)
+	if err != nil {
+		t.Fatalf("建立 cron 失敗: %v", err)
+	}
+
+	var taskCompleted bool
+	var timeoutTriggered bool
+	var mu sync.Mutex
+
+	// 使用 @every 1s 確保任務會立即開始
+	_, err = cron.Add("@every 1s", func() {
+		time.Sleep(100 * time.Millisecond)
+		mu.Lock()
+		taskCompleted = true
+		mu.Unlock()
+	}, "正常完成測試", 500*time.Millisecond, func() {
+		mu.Lock()
+		timeoutTriggered = true
+		mu.Unlock()
+	})
+
+	if err != nil {
+		t.Fatalf("添加任務失敗: %v", err)
+	}
+
+	cron.Start()
+	defer func() {
+		ctx := cron.Stop()
+		<-ctx.Done()
+	}()
+
+	time.Sleep(2 * time.Second)
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	if !taskCompleted {
+		t.Error("任務應該正常完成")
+	}
+	if timeoutTriggered {
+		t.Error("不應該觸發超時回調")
 	}
 }

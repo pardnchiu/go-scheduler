@@ -12,14 +12,14 @@
 
 ## Three Core Features
 
-### Ultra-Low Learning Curve
-Built with Go's standard library heap, focusing on core functionality with minimal memory usage and zero learning cost - if you can write cron expressions, you can use this
+### Ultra-low Learning Cost
+Zero learning curve - if you know how to write cron expressions, you basically know how to use it
 
 ### Flexible Syntax
-Supports standard cron expressions, custom descriptors (`@hourly`, `@daily`, `@weekly`, etc.), and custom interval (`@every`) syntax
+Supports standard cron expressions, custom descriptors (`@hourly`, `@daily`, `@weekly`, etc.) and custom interval (`@every`) syntax
 
 ### Efficient Architecture
-Min-heap based task scheduling algorithm with concurrent task execution and management, panic recovery mechanism, and dynamic task addition/removal, ensuring optimal performance in high-volume task scenarios
+Uses Go's standard library heap, focuses on core functionality, min-heap based task scheduling algorithm, concurrent task execution and management, with panic recovery mechanism and dynamic task add/remove capabilities, ensuring optimal performance in high-volume task scenarios
 
 ## Flow Chart
 
@@ -79,7 +79,7 @@ flowchart TD
 
 ## Dependencies
 
-- [`github.com/pardnchiu/go-logger`](https://github.com/pardnchiu/go-logger)
+- [`github.com/pardnchiu/go-logger`](https://github.com/pardnchiu/go-logger): if you don't need this, just fork it and replace with your preferred solution.
 
 ## Usage
 
@@ -237,12 +237,36 @@ scheduler.Add("@every 12h", task)
 
 - **Add** - Add scheduled task
   ```go
+  // Basic usage
   taskID, err := scheduler.Add("0 */2 * * *", func() {
     // Task logic
+  })
+
+  // Task with description
+  taskID, err := scheduler.Add("@daily", func() {
+    // Task logic
+  }, "Backup task")
+
+  // Task with timeout control
+  taskID, err := scheduler.Add("@hourly", func() {
+    // Long-running task
+    time.Sleep(10 * time.Second)
+  }, "Data processing", 5*time.Second)
+
+  // Task with timeout callback
+  taskID, err := scheduler.Add("@daily", func() {
+    // Potentially timeout-prone task
+    heavyProcessing()
+  }, "Critical backup", 30*time.Second, func() {
+    log.Println("Backup task timed out, please check system status")
   })
   ```
   - Parses schedule syntax
   - Generates unique task ID for management
+  - Supports variadic parameter configuration:
+    - `string`: Task description
+    - `time.Duration`: Task execution timeout
+    - `func()`: Callback function triggered on timeout
 
 - **Remove** - Cancel task schedule
   ```go
@@ -262,6 +286,18 @@ scheduler.Add("@every 12h", task)
   ```go
   tasks := scheduler.List()
   ```
+
+## Timeout Mechanism
+When execution time exceeds the configured `Delay`:
+- Interrupts task execution
+- Triggers `OnDelay` function (if configured)
+- Logs timeout event
+- Continues with next scheduled task
+
+### Features
+- Timeout implemented using `context.WithTimeout`
+- Timeout does not affect execution of other tasks
+- If action completes before timeout, timeout is not triggered
 
 ## Upcoming Features
 - Task dependency management similar to [php-async](https://github.com/pardnchiu/php-async)

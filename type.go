@@ -1,4 +1,4 @@
-package cron
+package goCron
 
 import (
 	"sync"
@@ -45,6 +45,8 @@ type task struct {
 	Next        time.Time
 	Prev        time.Time
 	Enable      bool
+	Delay       time.Duration
+	OnDelay     func()
 }
 
 type schedule interface {

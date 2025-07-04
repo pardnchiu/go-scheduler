@@ -1,11 +1,12 @@
-package cron
+package goCron
 
 import (
 	"container/heap"
 	"sync/atomic"
+	"time"
 )
 
-func (c *cron) Add(spec string, action func(), description ...string) (int64, error) {
+func (c *cron) Add(spec string, action func(), args ...interface{}) (int64, error) {
 	schedule, err := c.parser.parse(spec)
 	if err != nil {
 		return 0, c.logger.Error(err, "Failed to parse time spec")
@@ -21,8 +22,15 @@ func (c *cron) Add(spec string, action func(), description ...string) (int64, er
 		Enable:   true,
 	}
 
-	if len(description) > 0 {
-		entry.Description = description[0]
+	for _, arg := range args {
+		switch v := arg.(type) {
+		case string:
+			entry.Description = v
+		case time.Duration:
+			entry.Delay = v
+		case func():
+			entry.OnDelay = v
+		}
 	}
 
 	if c.running {

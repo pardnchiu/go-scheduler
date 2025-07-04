@@ -1,4 +1,4 @@
-package cron
+package goCron
 
 import (
 	"container/heap"
@@ -77,15 +77,38 @@ func (c *cron) Start() {
 							}
 
 							c.wait.Add(1)
-							go func() {
+							go func(entry *task) {
 								defer func() {
 									if r := recover(); r != nil {
-										c.logger.Info("Recovered from panic [task: %d]", e.ID)
+										c.logger.Info("Recovered from panic [task: %d]", entry.ID)
 									}
 								}()
 								defer c.wait.Done()
-								e.Action()
-							}()
+
+								if entry.Delay > 0 {
+									ctx, cancel := context.WithTimeout(context.Background(), entry.Delay)
+									defer cancel()
+
+									done := make(chan struct{})
+									go func() {
+										entry.Action()
+										close(done)
+									}()
+
+									select {
+									case <-done:
+										// 任務正常完成，不觸發超時
+									case <-ctx.Done():
+										// 任務超時，觸發超時
+										if entry.OnDelay != nil {
+											entry.OnDelay()
+										}
+										c.logger.Info("Task timeout [task: %d, delay: %v]", entry.ID, entry.Delay)
+									}
+								} else {
+									entry.Action()
+								}
+							}(e)
 
 							e.Prev = e.Next
 							e.Next = e.Schedule.next(now)
