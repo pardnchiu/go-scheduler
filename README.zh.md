@@ -76,7 +76,7 @@ flowchart TD
 
 ## 依賴套件
 
-- [`github.com/pardnchiu/go-logger`](https://github.com/pardnchiu/go-logger)
+- [`github.com/pardnchiu/go-logger`](https://github.com/pardnchiu/go-logger): 如果你不需要，你可以 fork 然後使用你熟悉的取代.
 
 ## 使用方法
 
