@@ -8,6 +8,8 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -16,10 +18,9 @@ import (
 )
 
 func TestCronCreation(t *testing.T) {
+	stdLogger := log.New(os.Stdout, "TEST: ", log.LstdFlags)
 	config := golangCron.Config{
-		Log: &golangCron.Log{
-			Stdout: true,
-		},
+		Logger: golangCron.NewLoggerFromStdLogger(stdLogger),
 	}
 	c, err := golangCron.New(config)
 	if err != nil {
@@ -41,11 +42,35 @@ func TestCronWithoutLog(t *testing.T) {
 	}
 }
 
+func TestCronWithSilentLogger(t *testing.T) {
+	config := golangCron.Config{
+		Logger: &golangCron.NoOpLogger{},
+	}
+	c, err := golangCron.New(config)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if c == nil {
+		t.Fatal("Expected cron instance, got nil")
+	}
+}
+
+func TestCronWithWriterLogger(t *testing.T) {
+	config := golangCron.Config{
+		Logger: golangCron.NewLoggerFromWriter(os.Stderr),
+	}
+	c, err := golangCron.New(config)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if c == nil {
+		t.Fatal("Expected cron instance, got nil")
+	}
+}
+
 func TestCronEverySecond(t *testing.T) {
 	config := golangCron.Config{
-		Log: &golangCron.Log{
-			Stdout: false,
-		},
+		Logger: &golangCron.NoOpLogger{},
 	}
 	c, err := golangCron.New(config)
 	if err != nil {
@@ -55,11 +80,14 @@ func TestCronEverySecond(t *testing.T) {
 	var mu sync.Mutex
 	count := 0
 
-	c.Add("@every 1s", func() {
+	_, err = c.Add("@every 1s", func() {
 		mu.Lock()
 		count++
 		mu.Unlock()
 	})
+	if err != nil {
+		t.Fatalf("Expected no error adding task, got %v", err)
+	}
 
 	c.Start()
 
@@ -79,9 +107,7 @@ func TestCronEverySecond(t *testing.T) {
 
 func TestCronStartStop(t *testing.T) {
 	config := golangCron.Config{
-		Log: &golangCron.Log{
-			Stdout: false,
-		},
+		Logger: &golangCron.NoOpLogger{},
 	}
 	c, err := golangCron.New(config)
 	if err != nil {
@@ -89,10 +115,13 @@ func TestCronStartStop(t *testing.T) {
 	}
 
 	executed := false
-	c.Add("@every 1s", func() {
+	_, err = c.Add("@every 1s", func() {
 		executed = true
 		fmt.Print("Task executed\n", time.Now().Format("15:04:05"), "\n", executed)
 	}, "Test Task")
+	if err != nil {
+		t.Fatalf("Expected no error adding task, got %v", err)
+	}
 
 	c.Start()
 
@@ -109,9 +138,7 @@ func TestCronStartStop(t *testing.T) {
 
 func TestCronMultipleTasks(t *testing.T) {
 	config := golangCron.Config{
-		Log: &golangCron.Log{
-			Stdout: false,
-		},
+		Logger: &golangCron.NoOpLogger{},
 	}
 	c, err := golangCron.New(config)
 	if err != nil {
@@ -122,17 +149,23 @@ func TestCronMultipleTasks(t *testing.T) {
 	count1 := 0
 	count2 := 0
 
-	c.Add("@every 1s", func() {
+	_, err = c.Add("@every 1s", func() {
 		mu.Lock()
 		count1++
 		mu.Unlock()
 	}, "Task 1")
+	if err != nil {
+		t.Fatalf("Expected no error adding task 1, got %v", err)
+	}
 
-	c.Add("@every 2s", func() {
+	_, err = c.Add("@every 2s", func() {
 		mu.Lock()
 		count2++
 		mu.Unlock()
 	})
+	if err != nil {
+		t.Fatalf("Expected no error adding task 2, got %v", err)
+	}
 
 	c.Start()
 
@@ -156,9 +189,7 @@ func TestCronMultipleTasks(t *testing.T) {
 
 func TestCronStopWithoutStart(t *testing.T) {
 	config := golangCron.Config{
-		Log: &golangCron.Log{
-			Stdout: false,
-		},
+		Logger: &golangCron.NoOpLogger{},
 	}
 	c, err := golangCron.New(config)
 	if err != nil {
@@ -176,9 +207,7 @@ func TestCronStopWithoutStart(t *testing.T) {
 
 func TestCronTaskPanic(t *testing.T) {
 	config := golangCron.Config{
-		Log: &golangCron.Log{
-			Stdout: false,
-		},
+		Logger: &golangCron.NoOpLogger{},
 	}
 	c, err := golangCron.New(config)
 	if err != nil {
@@ -188,15 +217,21 @@ func TestCronTaskPanic(t *testing.T) {
 	var mu sync.Mutex
 	normalTaskExecuted := false
 
-	c.Add("@every 1s", func() {
+	_, err = c.Add("@every 1s", func() {
 		panic("test panic")
 	})
+	if err != nil {
+		t.Fatalf("Expected no error adding panic task, got %v", err)
+	}
 
-	c.Add("@every 1s", func() {
+	_, err = c.Add("@every 1s", func() {
 		mu.Lock()
 		normalTaskExecuted = true
 		mu.Unlock()
 	})
+	if err != nil {
+		t.Fatalf("Expected no error adding normal task, got %v", err)
+	}
 
 	c.Start()
 
@@ -215,7 +250,9 @@ func TestCronTaskPanic(t *testing.T) {
 }
 
 func TestCronInvalidSchedule(t *testing.T) {
-	c, _ := golangCron.New(golangCron.Config{})
+	c, _ := golangCron.New(golangCron.Config{
+		Logger: &golangCron.NoOpLogger{},
+	})
 
 	// 期望返回錯誤而不是 panic
 	_, err := c.Add("invalid-cron-expression", func() {}, "Invalid Schedule Test")
@@ -226,9 +263,7 @@ func TestCronInvalidSchedule(t *testing.T) {
 
 func TestCronList(t *testing.T) {
 	config := golangCron.Config{
-		Log: &golangCron.Log{
-			Stdout: false,
-		},
+		Logger: &golangCron.NoOpLogger{},
 	}
 	c, err := golangCron.New(config)
 	if err != nil {
@@ -277,9 +312,7 @@ func TestCronList(t *testing.T) {
 
 func TestCronListAfterRemove(t *testing.T) {
 	config := golangCron.Config{
-		Log: &golangCron.Log{
-			Stdout: false,
-		},
+		Logger: &golangCron.NoOpLogger{},
 	}
 	c, err := golangCron.New(config)
 	if err != nil {
@@ -309,9 +342,7 @@ func TestCronListAfterRemove(t *testing.T) {
 
 func TestCronListEmpty(t *testing.T) {
 	config := golangCron.Config{
-		Log: &golangCron.Log{
-			Stdout: false,
-		},
+		Logger: &golangCron.NoOpLogger{},
 	}
 	c, err := golangCron.New(config)
 	if err != nil {
@@ -329,9 +360,7 @@ func TestCronListEmpty(t *testing.T) {
 
 func TestCronRemoveAll(t *testing.T) {
 	config := golangCron.Config{
-		Log: &golangCron.Log{
-			Stdout: false,
-		},
+		Logger: &golangCron.NoOpLogger{},
 	}
 	c, err := golangCron.New(config)
 	if err != nil {
@@ -372,9 +401,7 @@ func TestCronRemoveAll(t *testing.T) {
 
 func TestCronRemoveAllEmptyList(t *testing.T) {
 	config := golangCron.Config{
-		Log: &golangCron.Log{
-			Stdout: false,
-		},
+		Logger: &golangCron.NoOpLogger{},
 	}
 	c, err := golangCron.New(config)
 	if err != nil {
@@ -393,9 +420,7 @@ func TestCronRemoveAllEmptyList(t *testing.T) {
 
 func TestCronRemoveAllWithRunningTasks(t *testing.T) {
 	config := golangCron.Config{
-		Log: &golangCron.Log{
-			Stdout: false,
-		},
+		Logger: &golangCron.NoOpLogger{},
 	}
 	c, err := golangCron.New(config)
 	if err != nil {
@@ -403,7 +428,10 @@ func TestCronRemoveAllWithRunningTasks(t *testing.T) {
 	}
 
 	// 新增任務
-	c.Add("@every 1s", func() {}, "Running Task")
+	_, err = c.Add("@every 1s", func() {}, "Running Task")
+	if err != nil {
+		t.Fatalf("Expected no error adding task, got %v", err)
+	}
 
 	// 啟動 cron
 	c.Start()
@@ -427,5 +455,56 @@ func TestCronRemoveAllWithRunningTasks(t *testing.T) {
 	case <-ctx.Done():
 	case <-time.After(1 * time.Second):
 		t.Fatal("Stop should complete within 1 second")
+	}
+}
+
+func TestDifferentLoggerTypes(t *testing.T) {
+	// log.Logger
+	stdLogger := log.New(os.Stdout, "CRON-TEST: ", log.LstdFlags)
+	config1 := golangCron.Config{
+		Logger: golangCron.NewLoggerFromStdLogger(stdLogger),
+	}
+	c1, err := golangCron.New(config1)
+	if err != nil {
+		t.Fatalf("Expected no error with standard logger, got %v", err)
+	}
+	if c1 == nil {
+		t.Fatal("Expected cron instance with standard logger, got nil")
+	}
+
+	// io.Writer
+	config2 := golangCron.Config{
+		Logger: golangCron.NewLoggerFromWriter(os.Stderr),
+	}
+	c2, err := golangCron.New(config2)
+	if err != nil {
+		t.Fatalf("Expected no error with writer logger, got %v", err)
+	}
+	if c2 == nil {
+		t.Fatal("Expected cron instance with writer logger, got nil")
+	}
+
+	// NoOp
+	config3 := golangCron.Config{
+		Logger: &golangCron.NoOpLogger{},
+	}
+	c3, err := golangCron.New(config3)
+	if err != nil {
+		t.Fatalf("Expected no error with noop logger, got %v", err)
+	}
+	if c3 == nil {
+		t.Fatal("Expected cron instance with noop logger, got nil")
+	}
+
+	// (nil)
+	config4 := golangCron.Config{
+		Logger: nil,
+	}
+	c4, err := golangCron.New(config4)
+	if err != nil {
+		t.Fatalf("Expected no error with default logger, got %v", err)
+	}
+	if c4 == nil {
+		t.Fatal("Expected cron instance with default logger, got nil")
 	}
 }
