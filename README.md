@@ -12,14 +12,14 @@
 
 ## Three Core Features
 
-### Ultra-Low Learning Curve
-Built with Go's standard library heap, focusing on core functionality with minimal memory usage and zero learning cost - if you can write cron expressions, you can use this
+### Ultra-low Learning Cost
+Zero learning curve - if you know how to write cron expressions, you basically know how to use it
 
 ### Flexible Syntax
-Supports standard cron expressions, custom descriptors (`@hourly`, `@daily`, `@weekly`, etc.), and custom interval (`@every`) syntax
+Supports standard cron expressions, custom descriptors (`@hourly`, `@daily`, `@weekly`, etc.) and custom interval (`@every`) syntax
 
 ### Efficient Architecture
-Min-heap based task scheduling algorithm with concurrent task execution and management, panic recovery mechanism, and dynamic task addition/removal, ensuring optimal performance in high-volume task scenarios
+Uses Go's standard library heap, focuses on core functionality, min-heap based task scheduling algorithm, concurrent task execution and management, with panic recovery mechanism and dynamic task add/remove capabilities, ensuring optimal performance in high-volume task scenarios
 
 ## Flow Chart
 
