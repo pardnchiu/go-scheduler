@@ -13,6 +13,8 @@ func (c *cron) RemoveAll() {
 		return
 	}
 
+	c.logger.Info("removing all tasks")
+
 	for i := range c.heap {
 		c.heap[i].Enable = false
 	}
@@ -23,6 +25,8 @@ func (c *cron) Remove(id int64) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
+	c.logger.Info("removing task [ID: %d]", id)
+
 	if c.running {
 		c.remove <- id
 		return
@@ -32,6 +36,7 @@ func (c *cron) Remove(id int64) {
 		if entry.ID == id {
 			entry.Enable = false
 			heap.Remove(&c.heap, i)
+			c.logger.Info("removed task [ID: %d, Description: %s]", entry.ID, entry.Description)
 			break
 		}
 	}

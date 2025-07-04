@@ -10,6 +10,9 @@ func (c *cron) List() []task {
 			tasks = append(tasks, *t)
 		}
 	}
+
+	c.logger.Info("listing tasks [count: %d]", len(tasks))
+
 	return tasks
 }
 
