@@ -234,12 +234,36 @@ scheduler.Add("@every 12h", task)
 
 - **Add** - 新增排程任務
   ```go
+  // 基本用法
   taskID, err := scheduler.Add("0 */2 * * *", func() {
     // 任務邏輯
+  })
+
+  // 帶描述的任務
+  taskID, err := scheduler.Add("@daily", func() {
+    // 任務邏輯
+  }, "備份任務")
+
+  // 帶超時控制的任務
+  taskID, err := scheduler.Add("@hourly", func() {
+    // 長時間執行的任務
+    time.Sleep(10 * time.Second)
+  }, "資料處理", 5*time.Second)
+
+  // 帶超時回調的任務
+  taskID, err := scheduler.Add("@daily", func() {
+    // 可能超時的任務
+    heavyProcessing()
+  }, "重要備份", 30*time.Second, func() {
+    log.Println("備份任務執行超時，請檢查系統狀態")
   })
   ```
   - 解析排程語法
   - 產生唯一的任務 ID 以便管理
+  - 支援可變參數配置：
+    - `string`：任務描述
+    - `time.Duration`：任務執行超時時間
+    - `func()`：超時觸發的回調函式
 
 - **Remove** - 取消任務排程
   ```go
@@ -259,6 +283,18 @@ scheduler.Add("@every 12h", task)
   ```go
   tasks := scheduler.List()
   ```
+
+## 超時機制
+當執行時間超過設定的 `Delay`
+- 中斷任務執行
+- 觸發 `OnDelay` 函式（如果有設定）
+- 記錄超時日誌
+- 繼續執行下一個排程
+
+### 特點
+- 超時使用 `context.WithTimeout` 實現
+- 超時不會影響其他任務的執行
+- 如果動作在超時前完成，不會觸發超時
 
 ## 功能預告
 - 導入如 [php-async](https://github.com/pardnchiu/php-async) 中的任務依賴關係管理

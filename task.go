@@ -1,4 +1,4 @@
-package cron
+package goCron
 
 func (c *cron) List() []task {
 	c.mutex.Lock()

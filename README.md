@@ -237,12 +237,36 @@ scheduler.Add("@every 12h", task)
 
 - **Add** - Add scheduled task
   ```go
+  // Basic usage
   taskID, err := scheduler.Add("0 */2 * * *", func() {
     // Task logic
+  })
+
+  // Task with description
+  taskID, err := scheduler.Add("@daily", func() {
+    // Task logic
+  }, "Backup task")
+
+  // Task with timeout control
+  taskID, err := scheduler.Add("@hourly", func() {
+    // Long-running task
+    time.Sleep(10 * time.Second)
+  }, "Data processing", 5*time.Second)
+
+  // Task with timeout callback
+  taskID, err := scheduler.Add("@daily", func() {
+    // Potentially timeout-prone task
+    heavyProcessing()
+  }, "Critical backup", 30*time.Second, func() {
+    log.Println("Backup task timed out, please check system status")
   })
   ```
   - Parses schedule syntax
   - Generates unique task ID for management
+  - Supports variadic parameter configuration:
+    - `string`: Task description
+    - `time.Duration`: Task execution timeout
+    - `func()`: Callback function triggered on timeout
 
 - **Remove** - Cancel task schedule
   ```go
@@ -262,6 +286,18 @@ scheduler.Add("@every 12h", task)
   ```go
   tasks := scheduler.List()
   ```
+
+## Timeout Mechanism
+When execution time exceeds the configured `Delay`:
+- Interrupts task execution
+- Triggers `OnDelay` function (if configured)
+- Logs timeout event
+- Continues with next scheduled task
+
+### Features
+- Timeout implemented using `context.WithTimeout`
+- Timeout does not affect execution of other tasks
+- If action completes before timeout, timeout is not triggered
 
 ## Upcoming Features
 - Task dependency management similar to [php-async](https://github.com/pardnchiu/php-async)

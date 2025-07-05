@@ -1,4 +1,4 @@
-package cron
+package goCron
 
 import (
 	"fmt"
