@@ -2,6 +2,7 @@ package goCron
 
 import (
 	"container/heap"
+	"fmt"
 	"sync/atomic"
 	"time"
 )
@@ -9,7 +10,8 @@ import (
 func (c *cron) Add(spec string, action func(), args ...interface{}) (int64, error) {
 	schedule, err := c.parser.parse(spec)
 	if err != nil {
-		return 0, c.logger.Error(err, "Failed to parse time spec")
+		return 0, fmt.Errorf("Failed to parse schedule spec: %w", err)
+		// c.logger.Error(err, "Failed to parse time spec")
 	}
 
 	c.mutex.Lock()

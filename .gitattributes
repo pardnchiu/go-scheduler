@@ -1,0 +1,14 @@
+# 指定文件的語言
+*.go linguist-language=Go
+
+# 將以下的所有文件與檔案視為第三方代碼，不計入語言統計
+test/** linguist-vendored
+*.html linguist-vendored
+*.js linguist-vendored
+*.mod linguist-vendored
+*.sum linguist-vendored
+
+# 視文件為文檔類型，忽略語言統計
+*.md linguist-documentation
+*.txt linguist-documentation
+LICENSE linguist-documentation
