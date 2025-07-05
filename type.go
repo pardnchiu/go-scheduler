@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	goLogger "github.com/pardnchiu/go-logger"
+	// goLogger "github.com/pardnchiu/go-logger"
 )
 
 const (
@@ -13,16 +13,16 @@ const (
 	defaultLogMaxBackup = 5
 )
 
-type Log = goLogger.Log
-type Logger = goLogger.Logger
+// type Log = goLogger.Log
+// type Logger = goLogger.Logger
 
 type Config struct {
-	Log      *Log
+	// Log      *Log
 	Location *time.Location
 }
 
 type cron struct {
-	logger    *Logger
+	// logger    *Logger
 	mutex     sync.Mutex
 	wait      sync.WaitGroup
 	heap      taskHeap

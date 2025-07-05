@@ -98,6 +98,9 @@ func parseDescriptor(spec string) (schedule, error) {
 		if err != nil {
 			return nil, fmt.Errorf("Failed to parse @every: %v", err)
 		}
+		if duration < 30*time.Second {
+			return nil, fmt.Errorf("@every minimum interval is 30s, got %v", duration)
+		}
 		return delayScheduleResult{duration}, nil
 	}
 
