@@ -619,3 +619,188 @@ func TestCustomDescriptors(t *testing.T) {
 		}
 	}
 }
+
+// 測試範圍語法
+func TestRangeSyntax(t *testing.T) {
+	config := goCron.Config{}
+	c, err := goCron.New(config)
+	if err != nil {
+		t.Fatalf("建立 cron 失敗: %v", err)
+	}
+
+	testCases := []struct {
+		spec        string
+		description string
+		shouldError bool
+	}{
+		{"0 9-17 * * *", "工作時間 9-17 點", false},
+		{"0 0 1-5 * *", "每月 1-5 日", false},
+		{"0 0 * * 1-5", "星期一到五", false},
+		{"0-30 * * * *", "每小時 0-30 分", false},
+		{"0 9-5 * * *", "無效範圍（開始大於結束）", true},
+		{"0 25-30 * * *", "超出範圍", true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			_, err := c.Add(tc.spec, func() {}, tc.description)
+			if tc.shouldError && err == nil {
+				t.Errorf("預期錯誤但未發生: %s", tc.spec)
+			}
+			if !tc.shouldError && err != nil {
+				t.Errorf("預期成功但發生錯誤: %s, 錯誤: %v", tc.spec, err)
+			}
+		})
+	}
+}
+
+// 測試列表語法
+func TestListSyntax(t *testing.T) {
+	config := goCron.Config{}
+	c, err := goCron.New(config)
+	if err != nil {
+		t.Fatalf("建立 cron 失敗: %v", err)
+	}
+
+	testCases := []struct {
+		spec        string
+		description string
+		shouldError bool
+	}{
+		{"0 0 * * 1,3,5", "星期一三五", false},
+		{"0,15,30,45 * * * *", "每 15 分鐘", false},
+		{"0 9,12,18 * * *", "9 點、12 點、18 點", false},
+		{"0 0 1,15 * *", "每月 1 日和 15 日", false},
+		{"0 0 * 1,3,5,7,9,11 *", "奇數月份", false},
+		{"0 25,30 * * *", "超出範圍", true},
+		{"0 0 * * 8,9", "星期超出範圍", true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			_, err := c.Add(tc.spec, func() {}, tc.description)
+			if tc.shouldError && err == nil {
+				t.Errorf("預期錯誤但未發生: %s", tc.spec)
+			}
+			if !tc.shouldError && err != nil {
+				t.Errorf("預期成功但發生錯誤: %s, 錯誤: %v", tc.spec, err)
+			}
+		})
+	}
+}
+
+// 測試複合語法
+func TestComplexSyntax(t *testing.T) {
+	config := goCron.Config{}
+	c, err := goCron.New(config)
+	if err != nil {
+		t.Fatalf("建立 cron 失敗: %v", err)
+	}
+
+	testCases := []struct {
+		spec        string
+		description string
+		shouldError bool
+	}{
+		{"0 0 * * 1-3,5", "星期一到三，加星期五", false},
+		{"0,30 9-17 * * 1-5", "工作日工作時間每半小時", false},
+		{"15,45 8-10,14-16 * * *", "上午和下午特定時間", false},
+		{"0 0 1-5,15,25-31 * *", "月初、月中、月末", false},
+		{"0-15,30-45 * * * *", "每小時前 15 分和後 15 分", false},
+		{"0 0 * * 1-3,8", "無效星期組合", true},
+		{"0,70 * * * *", "分鐘超出範圍", true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			_, err := c.Add(tc.spec, func() {}, tc.description)
+			if tc.shouldError && err == nil {
+				t.Errorf("預期錯誤但未發生: %s", tc.spec)
+			}
+			if !tc.shouldError && err != nil {
+				t.Errorf("預期成功但發生錯誤: %s, 錯誤: %v", tc.spec, err)
+			}
+		})
+	}
+}
+
+// 測試實際執行
+func TestEnhancedSyntaxExecution(t *testing.T) {
+	config := goCron.Config{}
+	c, err := goCron.New(config)
+	if err != nil {
+		t.Fatalf("建立 cron 失敗: %v", err)
+	}
+
+	var mu sync.Mutex
+	executedTasks := make(map[string]int)
+
+	// 添加測試任務
+	_, err = c.Add("@every 30s", func() {
+		mu.Lock()
+		executedTasks["every_30s"]++
+		mu.Unlock()
+	}, "每 30 秒執行")
+
+	if err != nil {
+		t.Fatalf("添加任務失敗: %v", err)
+	}
+
+	c.Start()
+	defer func() {
+		ctx := c.Stop()
+		<-ctx.Done()
+	}()
+
+	// 等待 35 秒確保任務執行
+	time.Sleep(35 * time.Second)
+
+	mu.Lock()
+	count := executedTasks["every_30s"]
+	mu.Unlock()
+
+	if count < 1 {
+		t.Errorf("任務應至少執行 1 次，實際執行 %d 次", count)
+	}
+}
+
+// 測試語法解析邊界情況
+func TestSyntaxParsing(t *testing.T) {
+	config := goCron.Config{}
+	c, err := goCron.New(config)
+	if err != nil {
+		t.Fatalf("建立 cron 失敗: %v", err)
+	}
+
+	testCases := []struct {
+		spec        string
+		description string
+		shouldError bool
+	}{
+		{"0 0 * * 0-6", "所有星期", false},
+		{"0 0-23 * * *", "所有小時", false},
+		{"0-59 * * * *", "所有分鐘", false},
+		{"* * 1-31 * *", "所有日期", false},
+		{"* * * 1-12 *", "所有月份", false},
+		{"0 0 * * ", "缺少欄位", true},
+		{"0 0 * * * *", "過多欄位", true},
+		{"0 0 * * 1-", "不完整範圍", true},
+		{"0 0 * * ,1,2", "以逗號開頭", true},
+		{"0 0 * * 1,,2", "連續逗號", true},
+		{"0 0 * * 1,2,", "以逗號結尾", true},
+		{"0 0 * * -1,2", "以連字符開頭", true},
+		{"0 0 * * 1--2", "連續連字符", true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			_, err := c.Add(tc.spec, func() {}, tc.description)
+			if tc.shouldError && err == nil {
+				t.Errorf("預期錯誤但未發生: %s", tc.spec)
+			}
+			if !tc.shouldError && err != nil {
+				t.Errorf("預期成功但發生錯誤: %s, 錯誤: %v", tc.spec, err)
+			}
+		})
+	}
+}

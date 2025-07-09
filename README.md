@@ -151,8 +151,8 @@ type Config struct {
 > 5 欄位格式：`分鐘 小時 日 月 星期`<br>
 > 5-field format: `minute hour day month weekday`<br>
 > 
-> 目前版本暫不支援範圍語法 `1-5` 和 `1,3,5`<br>
-> `1-5` and `1,3,5` are not yet supported
+> 支援範圍語法 `1-5` 和 `1,3,5`<br>
+> `1-5` and `1,3,5` are supported
 
 ```go
 // Every minute
@@ -166,6 +166,9 @@ scheduler.Add("*/15 * * * *", task)
 
 // First day of month at 6 AM
 scheduler.Add("0 6 1 * *", task)
+
+// Monday to Wednesday, and Friday
+scheduler.Add("0 0 * * 1-3,5", task)
 ```
 
 ### 自定義 / Custom
@@ -315,15 +318,39 @@ When execution time exceeds the configured `Delay`
 
 ## 功能預告 / Upcoming
 
-### 標準 cron 語法增強 / Standard Cron Syntax Enhancement
-- 支援：`1-5`（星期一到星期五）<br>
-  Support: `1-5` (Monday to Friday)
-- 支援：`1,3,5`（星期一、三、五）<br>
-  Support: `1,3,5` (Monday, Wednesday, Friday)
-- 支援：`1-3,5`（星期一到三，加星期五）<br>
-  Support: `1-3,5` (Monday to Wednesday, plus Friday)
-
 ### 任務依賴關係管理 / Task Dependency Management
+
+<details>
+<summary>流程圖</summary>
+
+```mermaid
+flowchart TD
+  A[Execution Queue] --> B{Dependency Check}
+  B -->|Executable| B0[Execute]
+  B -->|Waiting for Dependencies| B1[Await Dependency Results]
+  
+  B1 --> C{Dependency Resolved}
+  C -->|Yes| B0
+  C -->|Timeout| W18[Timeout]
+  C -->|Failed| W18[Failed]
+  
+  B0 --> D{Timeout Configured?}
+  D -->|Yes| E{Timeout Occurred?}
+  D -->|No| F{Execution Failed?}
+  E -->|Timeout| H[Failed]
+  E -->|No Timeout| F
+  F -->|Success| G[Completed]
+  F -->|Failed| H
+  F -->|Panic| H
+  
+  G --> I[Log Execution Result]
+  H --> I
+  I --> J[Notify Dependent Tasks]
+  J --> K[Calculate Next Execution Time]
+```
+
+</details>
+
 導入如 [php-async](https://github.com/pardnchiu/php-async) 中的任務依賴關係管理<br>
 Task dependency management similar to [php-async](https://github.com/pardnchiu/php-async)
 - 前置依賴：任務 B 在任務 A 完成後執行<br>
