@@ -3,8 +3,6 @@ package goCron
 import (
 	"sync"
 	"time"
-
-	// goLogger "github.com/pardnchiu/go-logger"
 )
 
 const (
@@ -13,16 +11,11 @@ const (
 	defaultLogMaxBackup = 5
 )
 
-// type Log = goLogger.Log
-// type Logger = goLogger.Logger
-
 type Config struct {
-	// Log      *Log
 	Location *time.Location
 }
 
 type cron struct {
-	// logger    *Logger
 	mutex     sync.Mutex
 	wait      sync.WaitGroup
 	heap      taskHeap
@@ -62,9 +55,10 @@ type scheduleResult struct {
 }
 
 type scheduleField struct {
-	Value int  // 具體數值
-	All   bool // 是否匹配所有值（對應 "*"）
-	Step  int  // 步長值（對應 "*/n"）
+	Value  int
+	Values []int
+	All    bool
+	Step   int
 }
 
 type delayScheduleResult struct {

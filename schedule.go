@@ -11,7 +11,7 @@ func (parser) parse(spec string) (schedule, error) {
 	if spec[0] == '@' {
 		return parseDescriptor(spec)
 	}
-	return parseCronSpec(spec)
+	return parseCron(spec)
 }
 
 func (r delayScheduleResult) next(t time.Time) time.Time {
@@ -46,6 +46,15 @@ func (s *scheduleResult) matchField(field scheduleField, value int) bool {
 		return value%field.Step == 0
 	}
 
+	if len(field.Values) > 0 {
+		for _, v := range field.Values {
+			if v == value {
+				return true
+			}
+		}
+		return false
+	}
+
 	return field.Value == value
 }
 
@@ -53,43 +62,43 @@ func parseDescriptor(spec string) (schedule, error) {
 	switch spec {
 	case "@yearly", "@annually":
 		return &scheduleResult{
-			scheduleField{0, false, 0}, // 分鐘：0
-			scheduleField{0, false, 0}, // 小時：0
-			scheduleField{1, false, 0}, // 日：1
-			scheduleField{1, false, 0}, // 月：1
-			scheduleField{0, true, 0},  // 星期：*
+			scheduleField{Value: 0},
+			scheduleField{Value: 0},
+			scheduleField{Value: 1},
+			scheduleField{Value: 1},
+			scheduleField{All: true},
 		}, nil
 	case "@monthly":
 		return &scheduleResult{
-			scheduleField{0, false, 0}, // 分鐘：0
-			scheduleField{0, false, 0}, // 小時：0
-			scheduleField{1, false, 0}, // 日：1
-			scheduleField{0, true, 0},  // 月：*
-			scheduleField{0, true, 0},  // 星期：*
+			scheduleField{Value: 0},
+			scheduleField{Value: 0},
+			scheduleField{Value: 1},
+			scheduleField{All: true},
+			scheduleField{All: true},
 		}, nil
 	case "@weekly":
 		return &scheduleResult{
-			scheduleField{0, false, 0}, // 分鐘：0
-			scheduleField{0, false, 0}, // 小時：0
-			scheduleField{0, true, 0},  // 日：*
-			scheduleField{0, true, 0},  // 月：*
-			scheduleField{0, false, 0}, // 星期：0
+			scheduleField{Value: 0},
+			scheduleField{Value: 0},
+			scheduleField{All: true},
+			scheduleField{All: true},
+			scheduleField{Value: 0},
 		}, nil
 	case "@daily", "@midnight":
 		return &scheduleResult{
-			scheduleField{0, false, 0}, // 分鐘：0
-			scheduleField{0, false, 0}, // 小時：0
-			scheduleField{0, true, 0},  // 日：*
-			scheduleField{0, true, 0},  // 月：*
-			scheduleField{0, true, 0},  // 星期：*
+			scheduleField{Value: 0},
+			scheduleField{Value: 0},
+			scheduleField{All: true},
+			scheduleField{All: true},
+			scheduleField{All: true},
 		}, nil
 	case "@hourly":
 		return &scheduleResult{
-			scheduleField{0, false, 0}, // 分鐘：0
-			scheduleField{0, true, 0},  // 小時：*
-			scheduleField{0, true, 0},  // 日：*
-			scheduleField{0, true, 0},  // 月：*
-			scheduleField{0, true, 0},  // 星期：*
+			scheduleField{Value: 0},
+			scheduleField{All: true},
+			scheduleField{All: true},
+			scheduleField{All: true},
+			scheduleField{All: true},
 		}, nil
 	}
 
@@ -107,7 +116,7 @@ func parseDescriptor(spec string) (schedule, error) {
 	return nil, fmt.Errorf("Failed to parse: %s", spec)
 }
 
-func parseCronSpec(spec string) (schedule, error) {
+func parseCron(spec string) (schedule, error) {
 	fields := strings.Fields(spec)
 	if len(fields) != 5 {
 		return nil, fmt.Errorf("Requires 5 values, got %d", len(fields))
@@ -137,26 +146,136 @@ func parseCronSpec(spec string) (schedule, error) {
 
 func parseField(field string, min, max int) (scheduleField, error) {
 	if field == "*" {
-		return scheduleField{0, true, 0}, nil
+		return scheduleField{All: true}, nil
 	}
 
 	if strings.HasPrefix(field, "*/") {
-		stepStr := field[2:]
-		step, err := strconv.Atoi(stepStr)
+		str := field[2:]
+		step, err := strconv.Atoi(str)
 		if err != nil {
-			return scheduleField{}, err
+			return scheduleField{}, fmt.Errorf("Invalid step value: %v", err)
 		}
-		return scheduleField{0, false, step}, nil
+		if step <= 0 {
+			return scheduleField{}, fmt.Errorf("Step must greater than 0, got %d", step)
+		}
+		return scheduleField{Step: step}, nil
+	}
+
+	if strings.Contains(field, ",") {
+		return parseList(field, min, max)
+	}
+
+	if strings.Contains(field, "-") {
+		return parseRange(field, min, max)
 	}
 
 	value, err := strconv.Atoi(field)
 	if err != nil {
-		return scheduleField{}, err
+		return scheduleField{}, fmt.Errorf("Invalid value: %v", err)
 	}
 
 	if value < min || value > max {
-		return scheduleField{}, fmt.Errorf("Out of range [%d, %d], got [%d]", min, max, value)
+		return scheduleField{}, fmt.Errorf("%d out of range [%d, %d]", value, min, max)
 	}
 
-	return scheduleField{value, false, 0}, nil
+	return scheduleField{Value: value}, nil
+}
+
+func parseRange(field string, min, max int) (scheduleField, error) {
+	if strings.HasPrefix(field, "-") {
+		return scheduleField{}, fmt.Errorf("Cannot start with %s", field)
+	}
+	if strings.HasSuffix(field, "-") {
+		return scheduleField{}, fmt.Errorf("Cannot end with %s", field)
+	}
+	if strings.Contains(field, "--") {
+		return scheduleField{}, fmt.Errorf("Cannot contain multiple %s", field)
+	}
+
+	parts := strings.Split(field, "-")
+	if len(parts) != 2 {
+		return scheduleField{}, fmt.Errorf("Invalid format: %s", field)
+	}
+
+	start, err := strconv.Atoi(strings.TrimSpace(parts[0]))
+	if err != nil {
+		return scheduleField{}, fmt.Errorf("Invalid start: %v", err)
+	}
+
+	end, err := strconv.Atoi(strings.TrimSpace(parts[1]))
+	if err != nil {
+		return scheduleField{}, fmt.Errorf("Invalid end: %v", err)
+	}
+
+	if start < min || start > max {
+		return scheduleField{}, fmt.Errorf("%d out of bounds [%d, %d]", start, min, max)
+	}
+	if end < min || end > max {
+		return scheduleField{}, fmt.Errorf("%d out of bounds [%d, %d]", end, min, max)
+	}
+	if start > end {
+		return scheduleField{}, fmt.Errorf("%d cannot be greater than %d", start, end)
+	}
+
+	var values []int
+	for i := start; i <= end; i++ {
+		values = append(values, i)
+	}
+
+	return scheduleField{Values: values}, nil
+}
+
+func parseList(field string, min, max int) (scheduleField, error) {
+	if strings.HasPrefix(field, ",") {
+		return scheduleField{}, fmt.Errorf("Cannot start with %s", field)
+	}
+	if strings.HasSuffix(field, ",") {
+		return scheduleField{}, fmt.Errorf("Cannot end with %s", field)
+	}
+	if strings.Contains(field, ",,") {
+		return scheduleField{}, fmt.Errorf("Cannot contain multiple %s", field)
+	}
+
+	parts := strings.Split(field, ",")
+	var allValues []int
+	valueSet := make(map[int]bool)
+
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			return scheduleField{}, fmt.Errorf("Empty field %s", field)
+		}
+
+		var values []int
+
+		if strings.Contains(part, "-") {
+			rangeField, err := parseRange(part, min, max)
+			if err != nil {
+				return scheduleField{}, fmt.Errorf("Invalid range %v", err)
+			}
+			values = rangeField.Values
+		} else {
+			value, err := strconv.Atoi(part)
+			if err != nil {
+				return scheduleField{}, fmt.Errorf("Invalid value %v", err)
+			}
+			if value < min || value > max {
+				return scheduleField{}, fmt.Errorf("%d out of range [%d, %d]", value, min, max)
+			}
+			values = []int{value}
+		}
+
+		for _, v := range values {
+			if !valueSet[v] {
+				valueSet[v] = true
+				allValues = append(allValues, v)
+			}
+		}
+	}
+
+	if len(allValues) == 0 {
+		return scheduleField{}, fmt.Errorf("empty list field: %s", field)
+	}
+
+	return scheduleField{Values: allValues}, nil
 }

@@ -8,20 +8,12 @@ import (
 )
 
 func New(c Config) (*cron, error) {
-	// c.Log = validLoggerConfig(c)
-
 	location := time.Local
 	if c.Location != nil {
 		location = c.Location
 	}
 
-	// logger, err := goLogger.New(c.Log)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("Failed to initialize `pardnchiu/go-logger`: %w", err)
-	// }
-
 	cron := &cron{
-		// logger:    logger,
 		heap:      make(taskHeap, 0),
 		chain:     taskChain{},
 		parser:    parser{},
@@ -79,7 +71,6 @@ func (c *cron) Start() {
 								defer func() {
 									if r := recover(); r != nil {
 										slog.Info("Recovered from panic", slog.Int("taskID", int(entry.ID)), slog.Any("error", r))
-										// c.logger.Info("Recovered from panic [task: %d]", entry.ID)
 									}
 								}()
 								defer c.wait.Done()
@@ -104,7 +95,6 @@ func (c *cron) Start() {
 											entry.OnDelay()
 										}
 										slog.Info("Task timeout", slog.Int("taskID", int(entry.ID)), slog.Duration("delay", entry.Delay))
-										// c.logger.Info("Task timeout [task: %d, delay: %v]", entry.ID, entry.Delay)
 									}
 								} else {
 									entry.Action()
@@ -179,23 +169,3 @@ func (c *cron) Stop() context.Context {
 
 	return ctx
 }
-
-// func validLoggerConfig(c Config) *Log {
-// 	if c.Log == nil {
-// 		c.Log = &Log{
-// 			Path:    defaultLogPath,
-// 			Stdout:  false,
-// 			MaxSize: defaultLogMaxSize,
-// 		}
-// 	}
-// 	if c.Log.Path == "" {
-// 		c.Log.Path = defaultLogPath
-// 	}
-// 	if c.Log.MaxSize <= 0 {
-// 		c.Log.MaxSize = defaultLogMaxSize
-// 	}
-// 	if c.Log.MaxBackup <= 0 {
-// 		c.Log.MaxBackup = defaultLogMaxBackup
-// 	}
-// 	return c.Log
-// }
