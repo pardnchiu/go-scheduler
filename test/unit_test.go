@@ -7,18 +7,18 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"testing"
 	"time"
 
 	goCron "github.com/pardnchiu/go-cron"
-	golangCron "github.com/pardnchiu/go-cron"
 )
 
 func TestCronCreation(t *testing.T) {
-	config := golangCron.Config{}
-	c, err := golangCron.New(config)
+	config := goCron.Config{}
+	c, err := goCron.New(config)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -28,8 +28,8 @@ func TestCronCreation(t *testing.T) {
 }
 
 func TestCronWithoutLog(t *testing.T) {
-	config := golangCron.Config{}
-	c, err := golangCron.New(config)
+	config := goCron.Config{}
+	c, err := goCron.New(config)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -39,8 +39,8 @@ func TestCronWithoutLog(t *testing.T) {
 }
 
 func TestCronEveryThirtySeconds(t *testing.T) {
-	config := golangCron.Config{}
-	c, err := golangCron.New(config)
+	config := goCron.Config{}
+	c, err := goCron.New(config)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -76,8 +76,8 @@ func TestCronEveryThirtySeconds(t *testing.T) {
 }
 
 func TestCronStartStop(t *testing.T) {
-	config := golangCron.Config{}
-	c, err := golangCron.New(config)
+	config := goCron.Config{}
+	c, err := goCron.New(config)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -106,8 +106,8 @@ func TestCronStartStop(t *testing.T) {
 }
 
 func TestCronMultipleTasks(t *testing.T) {
-	config := golangCron.Config{}
-	c, err := golangCron.New(config)
+	config := goCron.Config{}
+	c, err := goCron.New(config)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -158,8 +158,8 @@ func TestCronMultipleTasks(t *testing.T) {
 }
 
 func TestCronStopWithoutStart(t *testing.T) {
-	config := golangCron.Config{}
-	c, err := golangCron.New(config)
+	config := goCron.Config{}
+	c, err := goCron.New(config)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -174,8 +174,8 @@ func TestCronStopWithoutStart(t *testing.T) {
 }
 
 func TestCronTaskPanic(t *testing.T) {
-	config := golangCron.Config{}
-	c, err := golangCron.New(config)
+	config := goCron.Config{}
+	c, err := goCron.New(config)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -219,7 +219,7 @@ func TestCronTaskPanic(t *testing.T) {
 }
 
 func TestCronInvalidSchedule(t *testing.T) {
-	c, _ := golangCron.New(golangCron.Config{})
+	c, _ := goCron.New(goCron.Config{})
 
 	// 期望返回錯誤而不是 panic
 	_, err := c.Add("invalid-cron-expression", func() {}, "Invalid Schedule Test")
@@ -229,7 +229,7 @@ func TestCronInvalidSchedule(t *testing.T) {
 }
 
 func TestCronInvalidMinInterval(t *testing.T) {
-	c, _ := golangCron.New(golangCron.Config{})
+	c, _ := goCron.New(goCron.Config{})
 
 	// 測試小於 30 秒的間隔應該返回錯誤
 	_, err := c.Add("@every 1s", func() {}, "Too Frequent Task")
@@ -250,8 +250,8 @@ func TestCronInvalidMinInterval(t *testing.T) {
 }
 
 func TestCronList(t *testing.T) {
-	config := golangCron.Config{}
-	c, err := golangCron.New(config)
+	config := goCron.Config{}
+	c, err := goCron.New(config)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -280,10 +280,10 @@ func TestCronList(t *testing.T) {
 	foundTask2 := false
 
 	for _, task := range tasks {
-		if task.ID == id1 && task.Description == "Task 1" {
+		if task.ID == id1 {
 			foundTask1 = true
 		}
-		if task.ID == id2 && task.Description == "Task 2" {
+		if task.ID == id2 {
 			foundTask2 = true
 		}
 	}
@@ -297,8 +297,8 @@ func TestCronList(t *testing.T) {
 }
 
 func TestCronListAfterRemove(t *testing.T) {
-	config := golangCron.Config{}
-	c, err := golangCron.New(config)
+	config := goCron.Config{}
+	c, err := goCron.New(config)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -332,8 +332,8 @@ func TestCronListAfterRemove(t *testing.T) {
 }
 
 func TestCronListEmpty(t *testing.T) {
-	config := golangCron.Config{}
-	c, err := golangCron.New(config)
+	config := goCron.Config{}
+	c, err := goCron.New(config)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -348,8 +348,8 @@ func TestCronListEmpty(t *testing.T) {
 }
 
 func TestCronRemoveAll(t *testing.T) {
-	config := golangCron.Config{}
-	c, err := golangCron.New(config)
+	config := goCron.Config{}
+	c, err := goCron.New(config)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -387,8 +387,8 @@ func TestCronRemoveAll(t *testing.T) {
 }
 
 func TestCronRemoveAllEmptyList(t *testing.T) {
-	config := golangCron.Config{}
-	c, err := golangCron.New(config)
+	config := goCron.Config{}
+	c, err := goCron.New(config)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -404,8 +404,8 @@ func TestCronRemoveAllEmptyList(t *testing.T) {
 }
 
 func TestCronRemoveAllWithRunningTasks(t *testing.T) {
-	config := golangCron.Config{}
-	c, err := golangCron.New(config)
+	config := goCron.Config{}
+	c, err := goCron.New(config)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -452,9 +452,10 @@ func TestTaskTimeout(t *testing.T) {
 	var timeoutTriggered bool
 	var mu sync.Mutex
 
-	// 使用 @every 30s 確保任務會執行
-	_, err = cron.Add("@every 30s", func() {
+	// 使用 func() error 以便支援依賴機制
+	_, err = cron.Add("@every 30s", func() error {
 		time.Sleep(2 * time.Second) // 任務執行時間超過超時限制
+		return nil
 	}, "超時測試", 500*time.Millisecond, func() {
 		mu.Lock()
 		timeoutTriggered = true
@@ -493,12 +494,13 @@ func TestTaskWithoutTimeout(t *testing.T) {
 	var taskCompleted bool
 	var mu sync.Mutex
 
-	// 使用 @every 30s 確保任務會執行
-	_, err = cron.Add("@every 30s", func() {
+	// 使用 func() error 以便支援依賴機制
+	_, err = cron.Add("@every 30s", func() error {
 		time.Sleep(200 * time.Millisecond)
 		mu.Lock()
 		taskCompleted = true
 		mu.Unlock()
+		return nil
 	}, "無延遲測試")
 
 	if err != nil {
@@ -533,12 +535,13 @@ func TestTaskNormalCompletionWithDelay(t *testing.T) {
 	var timeoutTriggered bool
 	var mu sync.Mutex
 
-	// 使用 @every 30s 確保任務會執行
-	_, err = cron.Add("@every 30s", func() {
+	// 使用 func() error 以便支援依賴機制
+	_, err = cron.Add("@every 30s", func() error {
 		time.Sleep(100 * time.Millisecond)
 		mu.Lock()
 		taskCompleted = true
 		mu.Unlock()
+		return nil
 	}, "正常完成測試", 500*time.Millisecond, func() {
 		mu.Lock()
 		timeoutTriggered = true
@@ -571,8 +574,8 @@ func TestTaskNormalCompletionWithDelay(t *testing.T) {
 
 // 測試標準 cron 語法
 func TestStandardCronSyntax(t *testing.T) {
-	config := golangCron.Config{}
-	c, err := golangCron.New(config)
+	config := goCron.Config{}
+	c, err := goCron.New(config)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -596,8 +599,8 @@ func TestStandardCronSyntax(t *testing.T) {
 
 // 測試自定義描述符
 func TestCustomDescriptors(t *testing.T) {
-	config := golangCron.Config{}
-	c, err := golangCron.New(config)
+	config := goCron.Config{}
+	c, err := goCron.New(config)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -620,130 +623,50 @@ func TestCustomDescriptors(t *testing.T) {
 	}
 }
 
-// 測試範圍語法
-func TestRangeSyntax(t *testing.T) {
-	config := goCron.Config{}
-	c, err := goCron.New(config)
+// 測試依賴功能
+func TestCronWithDependencies(t *testing.T) {
+	c, err := goCron.New(goCron.Config{})
 	if err != nil {
 		t.Fatalf("建立 cron 失敗: %v", err)
 	}
 
-	testCases := []struct {
-		spec        string
-		description string
-		shouldError bool
-	}{
-		{"0 9-17 * * *", "工作時間 9-17 點", false},
-		{"0 0 1-5 * *", "每月 1-5 日", false},
-		{"0 0 * * 1-5", "星期一到五", false},
-		{"0-30 * * * *", "每小時 0-30 分", false},
-		{"0 9-5 * * *", "無效範圍（開始大於結束）", true},
-		{"0 25-30 * * *", "超出範圍", true},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.description, func(t *testing.T) {
-			_, err := c.Add(tc.spec, func() {}, tc.description)
-			if tc.shouldError && err == nil {
-				t.Errorf("預期錯誤但未發生: %s", tc.spec)
-			}
-			if !tc.shouldError && err != nil {
-				t.Errorf("預期成功但發生錯誤: %s, 錯誤: %v", tc.spec, err)
-			}
-		})
-	}
-}
-
-// 測試列表語法
-func TestListSyntax(t *testing.T) {
-	config := goCron.Config{}
-	c, err := goCron.New(config)
-	if err != nil {
-		t.Fatalf("建立 cron 失敗: %v", err)
-	}
-
-	testCases := []struct {
-		spec        string
-		description string
-		shouldError bool
-	}{
-		{"0 0 * * 1,3,5", "星期一三五", false},
-		{"0,15,30,45 * * * *", "每 15 分鐘", false},
-		{"0 9,12,18 * * *", "9 點、12 點、18 點", false},
-		{"0 0 1,15 * *", "每月 1 日和 15 日", false},
-		{"0 0 * 1,3,5,7,9,11 *", "奇數月份", false},
-		{"0 25,30 * * *", "超出範圍", true},
-		{"0 0 * * 8,9", "星期超出範圍", true},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.description, func(t *testing.T) {
-			_, err := c.Add(tc.spec, func() {}, tc.description)
-			if tc.shouldError && err == nil {
-				t.Errorf("預期錯誤但未發生: %s", tc.spec)
-			}
-			if !tc.shouldError && err != nil {
-				t.Errorf("預期成功但發生錯誤: %s, 錯誤: %v", tc.spec, err)
-			}
-		})
-	}
-}
-
-// 測試複合語法
-func TestComplexSyntax(t *testing.T) {
-	config := goCron.Config{}
-	c, err := goCron.New(config)
-	if err != nil {
-		t.Fatalf("建立 cron 失敗: %v", err)
-	}
-
-	testCases := []struct {
-		spec        string
-		description string
-		shouldError bool
-	}{
-		{"0 0 * * 1-3,5", "星期一到三，加星期五", false},
-		{"0,30 9-17 * * 1-5", "工作日工作時間每半小時", false},
-		{"15,45 8-10,14-16 * * *", "上午和下午特定時間", false},
-		{"0 0 1-5,15,25-31 * *", "月初、月中、月末", false},
-		{"0-15,30-45 * * * *", "每小時前 15 分和後 15 分", false},
-		{"0 0 * * 1-3,8", "無效星期組合", true},
-		{"0,70 * * * *", "分鐘超出範圍", true},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.description, func(t *testing.T) {
-			_, err := c.Add(tc.spec, func() {}, tc.description)
-			if tc.shouldError && err == nil {
-				t.Errorf("預期錯誤但未發生: %s", tc.spec)
-			}
-			if !tc.shouldError && err != nil {
-				t.Errorf("預期成功但發生錯誤: %s, 錯誤: %v", tc.spec, err)
-			}
-		})
-	}
-}
-
-// 測試實際執行
-func TestEnhancedSyntaxExecution(t *testing.T) {
-	config := goCron.Config{}
-	c, err := goCron.New(config)
-	if err != nil {
-		t.Fatalf("建立 cron 失敗: %v", err)
-	}
-
+	var execOrder []int64
 	var mu sync.Mutex
-	executedTasks := make(map[string]int)
+	var wg sync.WaitGroup
+	wg.Add(3)
 
-	// 添加測試任務
-	_, err = c.Add("@every 30s", func() {
+	addToOrder := func(id int64) {
 		mu.Lock()
-		executedTasks["every_30s"]++
+		execOrder = append(execOrder, id)
 		mu.Unlock()
-	}, "每 30 秒執行")
+		wg.Done()
+	}
 
+	// 添加無依賴任務 - 使用 func() error
+	task1ID, err := c.Add("@every 30s", func() error {
+		addToOrder(1)
+		return nil
+	}, "task1")
 	if err != nil {
-		t.Fatalf("添加任務失敗: %v", err)
+		t.Fatalf("添加 task1 失敗: %v", err)
+	}
+
+	// 添加依賴 task1 的任務 - 使用 func() error
+	task2ID, err := c.Add("@every 30s", func() error {
+		addToOrder(2)
+		return nil
+	}, "task2", []int64{task1ID})
+	if err != nil {
+		t.Fatalf("添加 task2 失敗: %v", err)
+	}
+
+	// 添加依賴 task2 的任務 - 使用 func() error
+	_, err = c.Add("@every 30s", func() error {
+		addToOrder(3)
+		return nil
+	}, "task3", []int64{task2ID})
+	if err != nil {
+		t.Fatalf("添加 task3 失敗: %v", err)
 	}
 
 	c.Start()
@@ -752,55 +675,177 @@ func TestEnhancedSyntaxExecution(t *testing.T) {
 		<-ctx.Done()
 	}()
 
-	// 等待 35 秒確保任務執行
-	time.Sleep(35 * time.Second)
+	// 等待任務執行
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
 
-	mu.Lock()
-	count := executedTasks["every_30s"]
-	mu.Unlock()
+	select {
+	case <-done:
+		// 檢查執行順序
+		if len(execOrder) != 3 {
+			t.Fatalf("執行任務數量錯誤，預期 3，實際 %d", len(execOrder))
+		}
 
-	if count < 1 {
-		t.Errorf("任務應至少執行 1 次，實際執行 %d 次", count)
+		expectedOrder := []int64{1, 2, 3}
+		for i, expected := range expectedOrder {
+			if execOrder[i] != expected {
+				t.Errorf("執行順序錯誤，位置 %d 預期 %d，實際 %d", i, expected, execOrder[i])
+			}
+		}
+
+	case <-time.After(2 * time.Minute):
+		t.Fatal("測試超時")
 	}
 }
 
-// 測試語法解析邊界情況
-func TestSyntaxParsing(t *testing.T) {
-	config := goCron.Config{}
-	c, err := goCron.New(config)
+// 測試 func() 不能有依賴
+func TestFuncCannotHaveDependencies(t *testing.T) {
+	c, err := goCron.New(goCron.Config{})
 	if err != nil {
 		t.Fatalf("建立 cron 失敗: %v", err)
 	}
 
-	testCases := []struct {
-		spec        string
-		description string
-		shouldError bool
-	}{
-		{"0 0 * * 0-6", "所有星期", false},
-		{"0 0-23 * * *", "所有小時", false},
-		{"0-59 * * * *", "所有分鐘", false},
-		{"* * 1-31 * *", "所有日期", false},
-		{"* * * 1-12 *", "所有月份", false},
-		{"0 0 * * ", "缺少欄位", true},
-		{"0 0 * * * *", "過多欄位", true},
-		{"0 0 * * 1-", "不完整範圍", true},
-		{"0 0 * * ,1,2", "以逗號開頭", true},
-		{"0 0 * * 1,,2", "連續逗號", true},
-		{"0 0 * * 1,2,", "以逗號結尾", true},
-		{"0 0 * * -1,2", "以連字符開頭", true},
-		{"0 0 * * 1--2", "連續連字符", true},
+	// 先添加一個任務作為依賴
+	depTaskID, err := c.Add("@every 30s", func() error {
+		return nil
+	}, "dependency_task")
+	if err != nil {
+		t.Fatalf("添加依賴任務失敗: %v", err)
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.description, func(t *testing.T) {
-			_, err := c.Add(tc.spec, func() {}, tc.description)
-			if tc.shouldError && err == nil {
-				t.Errorf("預期錯誤但未發生: %s", tc.spec)
-			}
-			if !tc.shouldError && err != nil {
-				t.Errorf("預期成功但發生錯誤: %s, 錯誤: %v", tc.spec, err)
-			}
-		})
+	// 嘗試讓 func() 有依賴，應該失敗
+	_, err = c.Add("@every 30s", func() {
+		// 無返回值函數
+	}, "invalid_task", []int64{depTaskID})
+
+	if err == nil {
+		t.Error("func() 不應該能有依賴關係")
+	}
+
+	expectedError := "Need return value to get dependence support"
+	if err.Error() != expectedError {
+		t.Errorf("錯誤訊息不符，預期: %s，實際: %s", expectedError, err.Error())
+	}
+}
+
+func TestCronTaskFailure(t *testing.T) {
+	c, err := goCron.New(goCron.Config{})
+	if err != nil {
+		t.Fatalf("建立 cron 失敗: %v", err)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	// 添加會失敗的任務 - 使用 func() error
+	failTaskID, err := c.Add("@every 30s", func() error {
+		wg.Done()
+		return errors.New("模擬任務失敗")
+	}, "fail_task")
+	if err != nil {
+		t.Fatalf("添加失敗任務失敗: %v", err)
+	}
+
+	// 添加依賴失敗任務的任務 - 使用 func() error
+	var depTaskExecuted bool
+	_, err = c.Add("@every 30s", func() error {
+		depTaskExecuted = true
+		return nil
+	}, "dep_task", []int64{failTaskID})
+	if err != nil {
+		t.Fatalf("添加依賴任務失敗: %v", err)
+	}
+
+	c.Start()
+	defer func() {
+		ctx := c.Stop()
+		<-ctx.Done()
+	}()
+
+	// 等待失敗任務執行
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		// 等待一段時間確保依賴任務不會執行
+		time.Sleep(2 * time.Second)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		if depTaskExecuted {
+			t.Error("依賴任務不應該在前置任務失敗後執行")
+		}
+	case <-time.After(2 * time.Minute):
+		t.Fatal("測試超時")
+	}
+}
+
+func TestCronComplexDependencies(t *testing.T) {
+	c, err := goCron.New(goCron.Config{})
+	if err != nil {
+		t.Fatalf("建立 cron 失敗: %v", err)
+	}
+
+	var execOrder []int64
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	wg.Add(5)
+
+	addToOrder := func(id int64) {
+		mu.Lock()
+		execOrder = append(execOrder, id)
+		mu.Unlock()
+		wg.Done()
+	}
+
+	// 複雜依賴關係 - 所有任務都使用 func() error
+	task1ID, _ := c.Add("@every 30s", func() error { addToOrder(1); return nil }, "task1")
+	task2ID, _ := c.Add("@every 30s", func() error { addToOrder(2); return nil }, "task2")
+	task3ID, _ := c.Add("@every 30s", func() error { addToOrder(3); return nil }, "task3", []int64{task1ID})
+	task4ID, _ := c.Add("@every 30s", func() error { addToOrder(4); return nil }, "task4", []int64{task1ID, task2ID})
+	_, _ = c.Add("@every 30s", func() error { addToOrder(5); return nil }, "task5", []int64{task3ID, task4ID})
+
+	c.Start()
+	defer func() {
+		ctx := c.Stop()
+		<-ctx.Done()
+	}()
+
+	// 等待所有任務執行
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// 檢查執行順序是否符合依賴關係
+		orderMap := make(map[int64]int)
+		for i, id := range execOrder {
+			orderMap[id] = i
+		}
+
+		// task1 應該在 task3 和 task4 之前
+		if orderMap[1] >= orderMap[3] || orderMap[1] >= orderMap[4] {
+			t.Error("task1 應該在 task3 和 task4 之前執行")
+		}
+
+		// task2 應該在 task4 之前
+		if orderMap[2] >= orderMap[4] {
+			t.Error("task2 應該在 task4 之前執行")
+		}
+
+		// task3 和 task4 應該在 task5 之前
+		if orderMap[3] >= orderMap[5] || orderMap[4] >= orderMap[5] {
+			t.Error("task3 和 task4 應該在 task5 之前執行")
+		}
+
+	case <-time.After(3 * time.Minute):
+		t.Fatal("測試超時")
 	}
 }

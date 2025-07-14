@@ -3,6 +3,7 @@ package goCron
 import (
 	"container/heap"
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 )
@@ -15,7 +16,6 @@ func New(c Config) (*cron, error) {
 
 	cron := &cron{
 		heap:      make(taskHeap, 0),
-		chain:     taskChain{},
 		parser:    parser{},
 		stop:      make(chan struct{}),
 		add:       make(chan *task),
@@ -23,6 +23,7 @@ func New(c Config) (*cron, error) {
 		removeAll: make(chan struct{}),
 		location:  location,
 		running:   false,
+		depend:    newDepend(),
 	}
 
 	return cron, nil
@@ -34,12 +35,13 @@ func (c *cron) Start() {
 
 	if !c.running {
 		c.running = true
+		c.depend.start()
 
 		go func() {
 			now := time.Now().In(c.location)
 
 			for _, entry := range c.heap {
-				entry.Next = entry.Schedule.next(now)
+				entry.next = entry.schedule.next(now)
 			}
 			heap.Init(&c.heap)
 
@@ -47,89 +49,61 @@ func (c *cron) Start() {
 				var timer *time.Timer
 				var timerC <-chan time.Time
 
-				if len(c.heap) == 0 || c.heap[0].Next.IsZero() {
+				if len(c.heap) == 0 || c.heap[0].next.IsZero() {
 					timerC = nil
 				} else {
-					timer = time.NewTimer(c.heap[0].Next.Sub(now))
+					timer = time.NewTimer(c.heap[0].next.Sub(now))
 					timerC = timer.C
 				}
 
 				for {
 					select {
 					case now = <-timerC:
+						// * 時間觸發
 						now = now.In(c.location)
 
-						for len(c.heap) > 0 && (c.heap[0].Next.Before(now) || c.heap[0].Next.Equal(now)) {
+						for len(c.heap) > 0 && (c.heap[0].next.Before(now) || c.heap[0].next.Equal(now)) {
 							e := heap.Pop(&c.heap).(*task)
 
-							if !e.Enable {
+							if !e.enable {
 								continue
 							}
 
-							c.wait.Add(1)
-							go func(entry *task) {
-								defer func() {
-									if r := recover(); r != nil {
-										slog.Info("Recovered from panic", slog.Int("taskID", int(entry.ID)), slog.Any("error", r))
-									}
-								}()
-								defer c.wait.Done()
+							c.run(e)
 
-								if entry.Delay > 0 {
-									ctx, cancel := context.WithTimeout(context.Background(), entry.Delay)
-									defer cancel()
-
-									done := make(chan struct{})
-									go func() {
-										defer cancel()
-										entry.Action()
-										close(done)
-									}()
-
-									select {
-									case <-done:
-										// 任務正常完成，不觸發超時
-									case <-ctx.Done():
-										// 任務超時，觸發超時
-										if entry.OnDelay != nil {
-											entry.OnDelay()
-										}
-										slog.Info("Task timeout", slog.Int("taskID", int(entry.ID)), slog.Duration("delay", entry.Delay))
-									}
-								} else {
-									entry.Action()
-								}
-							}(e)
-
-							e.Prev = e.Next
-							e.Next = e.Schedule.next(now)
-							if !e.Next.IsZero() {
+							e.prev = e.next
+							e.next = e.schedule.next(now)
+							if !e.next.IsZero() {
 								heap.Push(&c.heap, e)
 							}
 						}
 
 					case newEntry := <-c.add:
+						// * 新增任務觸發
 						if timer != nil {
 							timer.Stop()
 						}
 						now = time.Now().In(c.location)
-						newEntry.Next = newEntry.Schedule.next(now)
+						newEntry.next = newEntry.schedule.next(now)
 						heap.Push(&c.heap, newEntry)
+						c.depend.manager.add(newEntry)
 
 					case id := <-c.remove:
+						// * 移除任務觸發
 						if timer != nil {
 							timer.Stop()
 						}
 						now = time.Now().In(c.location)
 						for i, entry := range c.heap {
 							if entry.ID == id {
-								entry.Enable = false
+								entry.enable = false
 								heap.Remove(&c.heap, i)
 								break
 							}
 						}
 
 					case <-c.removeAll:
+						// * 移除任務觸發
 						if timer != nil {
 							timer.Stop()
 						}
@@ -140,6 +114,7 @@ func (c *cron) Start() {
 						}
 
 					case <-c.stop:
+						// * 移除任務觸發
 						if timer != nil {
 							timer.Stop()
 						}
@@ -159,6 +134,7 @@ func (c *cron) Stop() context.Context {
 	if c.running {
 		c.stop <- struct{}{}
 		c.running = false
+		c.depend.stop()
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -168,4 +144,95 @@ func (c *cron) Stop() context.Context {
 	}()
 
 	return ctx
+}
+
+func (c *cron) run(e *task) {
+	e.mutex.RLock()
+	hasDeps := len(e.after) > 0
+	e.mutex.RUnlock()
+
+	if hasDeps {
+		c.depend.add(e.ID)
+	} else {
+		c.runAfter(e)
+	}
+}
+
+func (c *cron) runAfter(e *task) {
+	c.wait.Add(1)
+	go func(entry *task) {
+		defer func() {
+			if r := recover(); r != nil {
+				// * 更新狀態至錯誤
+				entry.mutex.Lock()
+				entry.state = TaskFailed
+				entry.mutex.Unlock()
+
+				slog.Info(
+					"Recovered from panic",
+					slog.Int("ID", int(entry.ID)),
+					slog.Any("error", r),
+				)
+			}
+		}()
+		defer c.wait.Done()
+
+		// * 更新狀態至執行中
+		entry.mutex.Lock()
+		entry.state = TaskRunning
+		entry.mutex.Unlock()
+
+		var taskError error
+		if entry.delay > 0 {
+			ctx, cancel := context.WithTimeout(context.Background(), entry.delay)
+			defer cancel()
+
+			done := make(chan struct{})
+			go func() {
+				defer cancel()
+
+				if err := entry.action(); err != nil {
+					taskError = err
+					slog.Error(
+						"Task failed",
+						slog.Any("error", err),
+					)
+				}
+				close(done)
+			}()
+
+			select {
+			case <-done:
+			case <-ctx.Done():
+				// * 任務超時
+				taskError = fmt.Errorf("Task timeout: %d", entry.delay)
+				if entry.onDelay != nil {
+					entry.onDelay()
+				}
+				slog.Warn(
+					"Task timeout",
+					slog.Int("ID", int(entry.ID)),
+					slog.Duration("delay", entry.delay),
+				)
+			}
+		} else {
+			if err := entry.action(); err != nil {
+				taskError = err
+				slog.Error(
+					"Task failed",
+					slog.Any("error", err),
+				)
+			}
+		}
+
+		entry.mutex.Lock()
+		if taskError != nil {
+			// * 更新狀態至錯誤
+			entry.state = TaskFailed
+		} else {
+			// * 更新狀態至完成
+			entry.state = TaskCompleted
+		}
+		entry.mutex.Unlock()
+	}(e)
 }
