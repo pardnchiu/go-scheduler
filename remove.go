@@ -14,7 +14,7 @@ func (c *cron) RemoveAll() {
 	}
 
 	for i := range c.heap {
-		c.heap[i].Enable = false
+		c.heap[i].enable = false
 	}
 	heap.Init(&c.heap)
 }
@@ -30,7 +30,7 @@ func (c *cron) Remove(id int64) {
 
 	for i, entry := range c.heap {
 		if entry.ID == id {
-			entry.Enable = false
+			entry.enable = false
 			heap.Remove(&c.heap, i)
 			break
 		}

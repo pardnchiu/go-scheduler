@@ -5,10 +5,16 @@ import (
 	"time"
 )
 
+var (
+	maxWorker = 2
+)
+
 const (
-	defaultLogPath      = "./logs/cron.log"
-	defaultLogMaxSize   = 16 * 1024 * 1024
-	defaultLogMaxBackup = 5
+	TaskPending int = iota
+	TaskRunning
+	TaskCompleted
+	TaskFailed
+	TaskSkipped
 )
 
 type Config struct {
@@ -19,27 +25,64 @@ type cron struct {
 	mutex     sync.Mutex
 	wait      sync.WaitGroup
 	heap      taskHeap
-	chain     taskChain
 	parser    parser
 	stop      chan struct{}
 	add       chan *task
 	remove    chan int64
 	removeAll chan struct{}
 	location  *time.Location
+	depend    *depend
 	next      int64
 	running   bool
 }
 
+type depend struct {
+	mutex    sync.RWMutex
+	wait     sync.WaitGroup
+	manager  *dependManager
+	running  bool
+	queue    chan int64
+	stopChan chan struct{}
+}
+
+type dependManager struct {
+	mutex   sync.RWMutex
+	list    map[int64]*task
+	waiting map[int64][]*task
+}
+
 type task struct {
+	mutex       sync.RWMutex
 	ID          int64
-	Description string
-	Schedule    schedule
-	Action      func()
-	Next        time.Time
-	Prev        time.Time
-	Enable      bool
-	Delay       time.Duration
-	OnDelay     func()
+	description string
+	schedule    schedule
+	action      func() error
+	next        time.Time
+	prev        time.Time
+	enable      bool
+	delay       time.Duration
+	onDelay     func()
+	after       []int64
+	state       int
+	result      *taskResult
+	startChan   chan struct{}
+	doneChan    chan taskResult
+}
+
+type taskResult struct {
+	ID       int64
+	status   int
+	start    time.Time
+	end      time.Time
+	duration time.Duration
+	error    error
+}
+
+type taskState struct {
+	done    bool
+	waiting []int64
+	failed  *int64
+	error   error
 }
 
 type schedule interface {
@@ -66,6 +109,4 @@ type delayScheduleResult struct {
 }
 
 type taskHeap []*task
-type taskChain []func(func()) func()
-
 type parser struct{}

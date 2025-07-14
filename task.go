@@ -6,7 +6,7 @@ func (c *cron) List() []task {
 
 	tasks := make([]task, 0, len(c.heap))
 	for _, t := range c.heap {
-		if t.Enable {
+		if t.enable {
 			tasks = append(tasks, *t)
 		}
 	}
@@ -18,7 +18,7 @@ func (h taskHeap) Len() int {
 }
 
 func (h taskHeap) Less(i, j int) bool {
-	return h[i].Next.Before(h[j].Next)
+	return h[i].next.Before(h[j].next)
 }
 
 func (h taskHeap) Swap(i, j int) {
