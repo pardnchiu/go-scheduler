@@ -3,7 +3,6 @@ package goCron
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"runtime"
 	"time"
 )
@@ -70,9 +69,9 @@ func (d *depend) add(id int64) {
 func (d *depend) runAfter(id int64) {
 	task, isExist := d.manager.list[id]
 	if !isExist {
-		slog.Error(
+		logger.Error(
 			"Task not found",
-			slog.Int("ID", int(id)),
+			"ID", int(id),
 		)
 		return
 	}
@@ -96,10 +95,10 @@ func (d *depend) runAfter(id int64) {
 			error:  err,
 		}
 		d.manager.update(result)
-		slog.Error(
+		logger.Error(
 			"Dependence Task failed",
-			slog.Int("ID", int(id)),
-			slog.Any("error", err),
+			"ID", int(id),
+			"error", err,
 		)
 		return
 	}
@@ -114,10 +113,10 @@ func (d *depend) run(task *task) {
 	task.state = TaskRunning
 	task.mutex.Unlock()
 
-	slog.Info(
+	logger.Info(
 		"Task started",
-		slog.Int("ID", int(task.ID)),
-		slog.String("description", task.description),
+		"ID", int(task.ID),
+		"description", task.description,
 	)
 
 	var taskError error
@@ -126,10 +125,10 @@ func (d *depend) run(task *task) {
 		defer func() {
 			if r := recover(); r != nil {
 				taskError = fmt.Errorf("task panic: %v", r)
-				slog.Error(
+				logger.Error(
 					"Task panic",
-					slog.Int("ID", int(task.ID)),
-					slog.Any("panic", r),
+					"ID", int(task.ID),
+					"panic", r,
 				)
 			}
 		}()
@@ -177,17 +176,17 @@ func (d *depend) run(task *task) {
 	d.manager.update(result)
 
 	if taskError != nil {
-		slog.Error(
+		logger.Error(
 			"Task failed",
-			slog.Int("ID", int(task.ID)),
-			slog.Duration("duration", duration),
-			slog.Any("error", taskError),
+			"ID", int(task.ID),
+			"duration", duration,
+			"error", taskError,
 		)
 	} else {
-		slog.Info(
+		logger.Info(
 			"Task completed",
-			slog.Int("ID", int(task.ID)),
-			slog.Duration("duration", duration),
+			"ID", int(task.ID),
+			"duration", duration,
 		)
 	}
 }

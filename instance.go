@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"log/syslog"
+	"os"
 	"time"
 )
 
@@ -12,6 +14,17 @@ func New(c Config) (*cron, error) {
 	location := time.Local
 	if c.Location != nil {
 		location = c.Location
+	}
+
+	writer, err := syslog.New(syslog.LOG_INFO|syslog.LOG_LOCAL0, "goCron")
+	if err != nil {
+		logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+			Level: slog.LevelInfo,
+		}))
+	} else {
+		logger = slog.New(slog.NewJSONHandler(writer, &slog.HandlerOptions{
+			Level: slog.LevelInfo,
+		}))
 	}
 
 	cron := &cron{
@@ -168,10 +181,10 @@ func (c *cron) runAfter(e *task) {
 				entry.state = TaskFailed
 				entry.mutex.Unlock()
 
-				slog.Info(
+				logger.Info(
 					"Recovered from panic",
-					slog.Int("ID", int(entry.ID)),
-					slog.Any("error", r),
+					"ID", int(entry.ID),
+					"error", r,
 				)
 			}
 		}()
@@ -193,9 +206,9 @@ func (c *cron) runAfter(e *task) {
 
 				if err := entry.action(); err != nil {
 					taskError = err
-					slog.Error(
+					logger.Error(
 						"Task failed",
-						slog.Any("error", err),
+						"error", err,
 					)
 				}
 				close(done)
@@ -209,18 +222,18 @@ func (c *cron) runAfter(e *task) {
 				if entry.onDelay != nil {
 					entry.onDelay()
 				}
-				slog.Warn(
+				logger.Warn(
 					"Task timeout",
-					slog.Int("ID", int(entry.ID)),
-					slog.Duration("delay", entry.delay),
+					"ID", int(entry.ID),
+					"delay", entry.delay,
 				)
 			}
 		} else {
 			if err := entry.action(); err != nil {
 				taskError = err
-				slog.Error(
+				logger.Error(
 					"Task failed",
-					slog.Any("error", err),
+					"error", err,
 				)
 			}
 		}

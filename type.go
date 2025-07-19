@@ -1,12 +1,14 @@
 package goCron
 
 import (
+	"log/slog"
 	"sync"
 	"time"
 )
 
 var (
 	maxWorker = 2
+	logger    *slog.Logger
 )
 
 const (
