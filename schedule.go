@@ -105,7 +105,7 @@ func parseDescriptor(spec string) (schedule, error) {
 	if strings.HasPrefix(spec, "@every ") {
 		duration, err := time.ParseDuration(spec[7:])
 		if err != nil {
-			return nil, fmt.Errorf("Failed to parse @every: %v", err)
+			return nil, fmt.Errorf("failed to parse @every: %v", err)
 		}
 		if duration < 30*time.Second {
 			return nil, fmt.Errorf("@every minimum interval is 30s, got %v", duration)
@@ -113,13 +113,13 @@ func parseDescriptor(spec string) (schedule, error) {
 		return delayScheduleResult{duration}, nil
 	}
 
-	return nil, fmt.Errorf("Failed to parse: %s", spec)
+	return nil, fmt.Errorf("failed to parse: %s", spec)
 }
 
 func parseCron(spec string) (schedule, error) {
 	fields := strings.Fields(spec)
 	if len(fields) != 5 {
-		return nil, fmt.Errorf("Requires 5 values, got %d", len(fields))
+		return nil, fmt.Errorf("requires 5 values, got %d", len(fields))
 	}
 
 	schedule := &scheduleResult{}
@@ -153,10 +153,10 @@ func parseField(field string, min, max int) (scheduleField, error) {
 		str := field[2:]
 		step, err := strconv.Atoi(str)
 		if err != nil {
-			return scheduleField{}, fmt.Errorf("Invalid step value: %v", err)
+			return scheduleField{}, fmt.Errorf("invalid step value: %v", err)
 		}
 		if step <= 0 {
-			return scheduleField{}, fmt.Errorf("Step must greater than 0, got %d", step)
+			return scheduleField{}, fmt.Errorf("step must greater than 0, got %d", step)
 		}
 		return scheduleField{Step: step}, nil
 	}
@@ -171,7 +171,7 @@ func parseField(field string, min, max int) (scheduleField, error) {
 
 	value, err := strconv.Atoi(field)
 	if err != nil {
-		return scheduleField{}, fmt.Errorf("Invalid value: %v", err)
+		return scheduleField{}, fmt.Errorf("invalid value: %v", err)
 	}
 
 	if value < min || value > max {
@@ -183,28 +183,28 @@ func parseField(field string, min, max int) (scheduleField, error) {
 
 func parseRange(field string, min, max int) (scheduleField, error) {
 	if strings.HasPrefix(field, "-") {
-		return scheduleField{}, fmt.Errorf("Cannot start with %s", field)
+		return scheduleField{}, fmt.Errorf("cannot start with %s", field)
 	}
 	if strings.HasSuffix(field, "-") {
-		return scheduleField{}, fmt.Errorf("Cannot end with %s", field)
+		return scheduleField{}, fmt.Errorf("cannot end with %s", field)
 	}
 	if strings.Contains(field, "--") {
-		return scheduleField{}, fmt.Errorf("Cannot contain multiple %s", field)
+		return scheduleField{}, fmt.Errorf("cannot contain multiple %s", field)
 	}
 
 	parts := strings.Split(field, "-")
 	if len(parts) != 2 {
-		return scheduleField{}, fmt.Errorf("Invalid format: %s", field)
+		return scheduleField{}, fmt.Errorf("invalid format: %s", field)
 	}
 
 	start, err := strconv.Atoi(strings.TrimSpace(parts[0]))
 	if err != nil {
-		return scheduleField{}, fmt.Errorf("Invalid start: %v", err)
+		return scheduleField{}, fmt.Errorf("invalid start: %v", err)
 	}
 
 	end, err := strconv.Atoi(strings.TrimSpace(parts[1]))
 	if err != nil {
-		return scheduleField{}, fmt.Errorf("Invalid end: %v", err)
+		return scheduleField{}, fmt.Errorf("invalid end: %v", err)
 	}
 
 	if start < min || start > max {
@@ -227,13 +227,13 @@ func parseRange(field string, min, max int) (scheduleField, error) {
 
 func parseList(field string, min, max int) (scheduleField, error) {
 	if strings.HasPrefix(field, ",") {
-		return scheduleField{}, fmt.Errorf("Cannot start with %s", field)
+		return scheduleField{}, fmt.Errorf("cannot start with %s", field)
 	}
 	if strings.HasSuffix(field, ",") {
-		return scheduleField{}, fmt.Errorf("Cannot end with %s", field)
+		return scheduleField{}, fmt.Errorf("cannot end with %s", field)
 	}
 	if strings.Contains(field, ",,") {
-		return scheduleField{}, fmt.Errorf("Cannot contain multiple %s", field)
+		return scheduleField{}, fmt.Errorf("cannot contain multiple %s", field)
 	}
 
 	parts := strings.Split(field, ",")
@@ -243,7 +243,7 @@ func parseList(field string, min, max int) (scheduleField, error) {
 	for _, part := range parts {
 		part = strings.TrimSpace(part)
 		if part == "" {
-			return scheduleField{}, fmt.Errorf("Empty field %s", field)
+			return scheduleField{}, fmt.Errorf("empty field %s", field)
 		}
 
 		var values []int
@@ -251,13 +251,13 @@ func parseList(field string, min, max int) (scheduleField, error) {
 		if strings.Contains(part, "-") {
 			rangeField, err := parseRange(part, min, max)
 			if err != nil {
-				return scheduleField{}, fmt.Errorf("Invalid range %v", err)
+				return scheduleField{}, fmt.Errorf("invalid range %v", err)
 			}
 			values = rangeField.Values
 		} else {
 			value, err := strconv.Atoi(part)
 			if err != nil {
-				return scheduleField{}, fmt.Errorf("Invalid value %v", err)
+				return scheduleField{}, fmt.Errorf("invalid value %v", err)
 			}
 			if value < min || value > max {
 				return scheduleField{}, fmt.Errorf("%d out of range [%d, %d]", value, min, max)

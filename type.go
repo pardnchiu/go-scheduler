@@ -8,7 +8,7 @@ import (
 
 var (
 	maxWorker = 2
-	logger    *slog.Logger
+	// logger    *slog.Logger
 )
 
 const (
@@ -16,7 +16,6 @@ const (
 	TaskRunning
 	TaskCompleted
 	TaskFailed
-	TaskSkipped
 )
 
 type Config struct {
@@ -36,6 +35,7 @@ type cron struct {
 	depend    *depend
 	next      int64
 	running   bool
+	logger    *slog.Logger
 }
 
 type depend struct {
@@ -43,9 +43,23 @@ type depend struct {
 	wait     sync.WaitGroup
 	manager  *dependManager
 	running  bool
-	queue    chan int64
+	queue    chan Wait
 	stopChan chan struct{}
+	logger   *slog.Logger
 }
+
+type Wait struct {
+	ID    int64
+	Delay time.Duration
+	State WaitState
+}
+
+type WaitState int
+
+const (
+	Stop WaitState = iota
+	Skip
+)
 
 type dependManager struct {
 	mutex   sync.RWMutex
@@ -63,8 +77,10 @@ type task struct {
 	prev        time.Time
 	enable      bool
 	delay       time.Duration
+	wait        time.Duration
+	waitState   WaitState
 	onDelay     func()
-	after       []int64
+	after       []Wait
 	state       int
 	result      *taskResult
 	startChan   chan struct{}
@@ -82,7 +98,7 @@ type taskResult struct {
 
 type taskState struct {
 	done    bool
-	waiting []int64
+	waiting []Wait
 	failed  *int64
 	error   error
 }

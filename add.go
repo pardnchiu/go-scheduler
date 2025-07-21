@@ -10,7 +10,7 @@ import (
 func (c *cron) Add(spec string, action interface{}, arg ...interface{}) (int64, error) {
 	schedule, err := c.parser.parse(spec)
 	if err != nil {
-		return 0, fmt.Errorf("Failed to parse: %w", err)
+		return 0, fmt.Errorf("failed to parse: %w", err)
 	}
 
 	c.mutex.Lock()
@@ -40,10 +40,10 @@ func (c *cron) Add(spec string, action interface{}, arg ...interface{}) (int64, 
 		withError = true
 		entry.action = v
 	default:
-		return 0, fmt.Errorf("Action need to be func() or func()")
+		return 0, fmt.Errorf("action need to be func() or func()")
 	}
 
-	var after []int64
+	var after []Wait
 	for _, e := range arg {
 		switch v := e.(type) {
 		case string:
@@ -53,18 +53,24 @@ func (c *cron) Add(spec string, action interface{}, arg ...interface{}) (int64, 
 		case func():
 			entry.onDelay = v
 		// * 依賴任務
+		case []Wait:
+			after = append(after, v...)
+			entry.state = TaskPending
+		// ! Deprecated in v2.*.*
 		case []int64:
-			after = v
+			for _, id := range v {
+				after = append(after, Wait{ID: id})
+			}
 			entry.state = TaskPending
 		}
 	}
 
 	if !withError && after != nil {
-		return 0, fmt.Errorf("Need return value to get dependence support")
+		return 0, fmt.Errorf("need return value to get dependence support")
 	}
 
 	if after != nil {
-		entry.after = make([]int64, len(after))
+		entry.after = make([]Wait, len(after))
 		copy(entry.after, after)
 	}
 

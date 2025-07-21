@@ -16,6 +16,7 @@ func New(c Config) (*cron, error) {
 		location = c.Location
 	}
 
+	var logger *slog.Logger
 	writer, err := syslog.New(syslog.LOG_INFO|syslog.LOG_LOCAL0, "goCron")
 	if err != nil {
 		logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
@@ -27,6 +28,9 @@ func New(c Config) (*cron, error) {
 		}))
 	}
 
+	depend := newDepend();
+	depend.logger = logger
+
 	cron := &cron{
 		heap:      make(taskHeap, 0),
 		parser:    parser{},
@@ -36,7 +40,8 @@ func New(c Config) (*cron, error) {
 		removeAll: make(chan struct{}),
 		location:  location,
 		running:   false,
-		depend:    newDepend(),
+		depend:    depend,
+		logger:    logger,
 	}
 
 	return cron, nil
@@ -165,7 +170,7 @@ func (c *cron) run(e *task) {
 	e.mutex.RUnlock()
 
 	if hasDeps {
-		c.depend.add(e.ID)
+		c.depend.addWait(e.ID, e.wait, e.waitState)
 	} else {
 		c.runAfter(e)
 	}
@@ -181,7 +186,7 @@ func (c *cron) runAfter(e *task) {
 				entry.state = TaskFailed
 				entry.mutex.Unlock()
 
-				logger.Info(
+				c.logger.Info(
 					"Recovered from panic",
 					"ID", int(entry.ID),
 					"error", r,
@@ -206,7 +211,7 @@ func (c *cron) runAfter(e *task) {
 
 				if err := entry.action(); err != nil {
 					taskError = err
-					logger.Error(
+					c.logger.Error(
 						"Task failed",
 						"error", err,
 					)
@@ -218,11 +223,11 @@ func (c *cron) runAfter(e *task) {
 			case <-done:
 			case <-ctx.Done():
 				// * 任務超時
-				taskError = fmt.Errorf("Task timeout: %d", entry.delay)
+				taskError = fmt.Errorf("task timeout: %d", entry.delay)
 				if entry.onDelay != nil {
 					entry.onDelay()
 				}
-				logger.Warn(
+				c.logger.Warn(
 					"Task timeout",
 					"ID", int(entry.ID),
 					"delay", entry.delay,
@@ -231,7 +236,7 @@ func (c *cron) runAfter(e *task) {
 		} else {
 			if err := entry.action(); err != nil {
 				taskError = err
-				logger.Error(
+				c.logger.Error(
 					"Task failed",
 					"error", err,
 				)

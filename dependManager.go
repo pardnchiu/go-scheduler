@@ -43,23 +43,23 @@ func (m *dependManager) check(id int64) taskState {
 	if !isExist {
 		return taskState{
 			done:  false,
-			error: fmt.Errorf("Task not found: %d", id),
+			error: fmt.Errorf("task not found: %d", id),
 		}
 	}
 
 	task.mutex.RLock()
 	defer task.mutex.RUnlock()
 
-	var waiting []int64
+	var waiting []Wait
 
-	for _, afterId := range task.after {
-		afterTask, isExist := m.list[afterId]
+	for _, e := range task.after {
+		afterTask, isExist := m.list[e.ID]
 		// * 依賴任務不存在
 		if !isExist {
 			return taskState{
 				done:   false,
-				failed: &afterId,
-				error:  fmt.Errorf("Dependence Task not found: %d", id),
+				failed: &e.ID,
+				error:  fmt.Errorf("dependence Task not found: %d", id),
 			}
 		}
 
@@ -67,18 +67,21 @@ func (m *dependManager) check(id int64) taskState {
 		status := afterTask.state
 		afterTask.mutex.RUnlock()
 
-		// * 依賴任務執行錯誤
+		// * 依賴任務執行錯誤處理
 		if status == TaskFailed {
-			return taskState{
-				done:   false,
-				failed: &afterId,
-				error:  fmt.Errorf("Dependence Task is failed: %d", id),
+			if e.State == Stop {
+				return taskState{
+					done:   false,
+					failed: &e.ID,
+					error:  fmt.Errorf("dependence Task is failed: %d", id),
+				}
 			}
+			continue
 		}
 
 		// * 依賴任務未完成
 		if status != TaskCompleted {
-			waiting = append(waiting, afterId)
+			waiting = append(waiting, e)
 		}
 	}
 
@@ -87,7 +90,7 @@ func (m *dependManager) check(id int64) taskState {
 		return taskState{
 			done:    false,
 			waiting: waiting,
-			error:   fmt.Errorf("Waiting for dependencies: %d", waiting),
+			error:   fmt.Errorf("waiting for dependencies: %d", waiting),
 		}
 	}
 
@@ -111,12 +114,12 @@ func (m *dependManager) wait(id int64, timeout time.Duration) error {
 
 		// * 依賴任務失敗
 		if result.failed != nil {
-			return fmt.Errorf("Dependence Task failed: %d, %s", *result.failed, result.error.Error())
+			return fmt.Errorf("dependence Task failed: %d, %s", *result.failed, result.error.Error())
 		}
 
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("Timeout waiting for dependencies: %s", result.error.Error())
+			return fmt.Errorf("timeout waiting for dependencies: %s", result.error.Error())
 		case <-time.After(1 * time.Millisecond):
 		}
 	}

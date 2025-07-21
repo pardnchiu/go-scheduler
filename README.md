@@ -1,48 +1,76 @@
 > [!NOTE]
 > This README was translated by ChatGPT 4o
-
 # Cron Scheduler
 
-> A lightweight Golang scheduler supporting standard cron expressions, custom descriptors, custom intervals, and task dependencies. Easily write schedules using Go.<br>
-> Originally designed for [pardnchiu/go-ip-sentry](https://github.com/pardnchiu/go-ip-sentry) to handle threat score decay calculations.
+> Lightweight Golang scheduler supporting standard cron expressions, custom descriptors, custom intervals, and task dependencies. Easy scheduling with Go<br>
+> Originally designed for the scheduling functionality used in threat score decay calculations for [pardnchiu/go-ip-sentry](https://github.com/pardnchiu/go-ip-sentry)
 
-![lang](https://img.shields.io/github/languages/top/pardnchiu/go-cron)
-[![license](https://img.shields.io/github/license/pardnchiu/go-cron)](LICENSE)
-[![version](https://img.shields.io/github/v/tag/pardnchiu/go-cron)](https://github.com/pardnchiu/go-cron/releases)
-![card](https://goreportcard.com/badge/github.com/pardnchiu/go-cron)<br>
+[![pkg](https://pkg.go.dev/badge/github.com/pardnchiu/go-cron.svg)](https://pkg.go.dev/github.com/pardnchiu/go-cron)
+[![card](https://goreportcard.com/badge/github.com/pardnchiu/go-cron)](https://goreportcard.com/report/github.com/pardnchiu/go-cron)
+[![codecov](https://img.shields.io/codecov/c/github/pardnchiu/go-cron)](https://app.codecov.io/github/pardnchiu/go-cron)
+[![version](https://img.shields.io/github/v/tag/pardnchiu/go-cron?label=release)](https://github.com/pardnchiu/go-cron/releases)
+[![license](https://img.shields.io/github/license/pardnchiu/go-cron)](LICENSE)<br>
 [![readme](https://img.shields.io/badge/readme-EN-white)](README.md)
-[![readme](https://img.shields.io/badge/readme-ZH-white)](README.zh.md) 
+[![readme](https://img.shields.io/badge/readme-ZH-white)](README.zh.md)
 
-## Key Features
+- [Core Features](#core-features)
+  - [Flexible Syntax](#flexible-syntax)
+  - [Task Dependencies](#task-dependencies)
+  - [Efficient Architecture](#efficient-architecture)
+- [Flowchart](#flowchart)
+- [Dependencies](#dependencies)
+- [Usage](#usage)
+  - [Installation](#installation)
+  - [Initialization](#initialization)
+    - [Basic Usage](#basic-usage)
+    - [Task Dependencies](#task-dependencies-1)
+- [Configuration](#configuration)
+- [Supported Formats](#supported-formats)
+  - [Standard](#standard)
+  - [Custom](#custom)
+- [Available Functions](#available-functions)
+  - [Scheduler Management](#scheduler-management)
+  - [Task Management](#task-management)
+- [Task Dependencies](#task-dependencies-2)
+  - [Basic Usage](#basic-usage-1)
+  - [Dependency Examples](#dependency-examples)
+  - [Task Status](#task-status)
+- [Timeout Mechanism](#timeout-mechanism)
+  - [Features](#features)
+- [Upcoming Features](#upcoming-features)
+  - [Enhanced Task Dependencies](#enhanced-task-dependencies)
+  - [Task Completion Trigger Refactor](#task-completion-trigger-refactor)
+- [License](#license)
+- [Star](#star)
+- [Author](#author)
+
+## Core Features
 
 ### Flexible Syntax
-Supports standard cron expressions, custom descriptors (`@hourly`, `@daily`, `@weekly`, etc.), and custom interval syntax (`@every`). Minimal learning curve—if you know cron expressions, you can use this scheduler.
+Supports standard cron expressions, custom descriptors (`@hourly`, `@daily`, `@weekly`, etc.), and custom interval (`@every`) syntax. Zero learning curve - if you know cron expressions, you can use it.
 
 ### Task Dependencies
-Supports pre-task dependencies, multi-dependencies, timeout control for dependencies, and failure handling mechanisms.
+Supports prerequisite dependency tasks, multiple dependencies, dependency timeout control, and failure handling mechanisms.
 
 ### Efficient Architecture
-Built using Golang's standard `heap` library, focusing on core functionality. Implements task scheduling based on a min-heap, concurrent task execution and management, panic recovery, dynamic task addition/removal, and ensures optimal performance in scenarios with numerous tasks.
+Uses Golang standard library `heap`, focusing on core functionality. Min-heap based task scheduling with concurrent task execution and management, featuring panic recovery and dynamic task add/remove capabilities, ensuring optimal performance in high-volume task scenarios.
 
-## Flowcharts
+## Flowchart
 
 <details>
-<summary>Main Workflow</summary> 
+<summary>Main Process</summary> 
 
 ```mermaid
 flowchart TD
-  A[Initialize] --> C[Initialize Task Heap]
-  C --> D{Already Running?}
-  D -->|Yes| D1[No Action]
-  D -->|No| D2[Start Execution]
-  
-  D2 --> E[Calculate Initial Task Times]
-  E --> F[Initialize Min Heap]
-  F --> G[Start Main Loop]
-  
-  G --> H{Check Heap Status}
-  G -->|No Tasks<br>Wait for Events| Q[Listen for Events]
-  G -->|Has Tasks<br>Set Timer to Next Task| Q
+  A[Initialize] --> B{Is Running?}
+  B -->|No| B0[Start Execution]
+    B0 --> C[Calculate Initial Tasks]
+    C --> D[Initialize Tasks]
+    D --> E[Start Main Loop]
+      E --> H{Check Heap Status}
+      E -->|No Tasks<br>Wait for Events| Q
+      E -->|Has Tasks<br>Set Next Task Timer| Q
+  B -->|Yes<br>Wait for Trigger| Q[Listen Events]
   
   Q --> R{Event Type}
   R -->|Timer Expired| R1[Execute Due Tasks]
@@ -52,10 +80,10 @@ flowchart TD
   
   R1 --> S[Pop Task from Heap]
   S --> R5[Calculate Next Execution Time]
-  R5 --> G
+  R5 --> E
   S --> T{Check if Enabled}
   T -->|Disabled| T0[Skip Task]
-  T0 --> G
+  T0 --> E
   T -->|Enabled| T1[Execute Task Function]
   
   R2 --> V[Parse Schedule]
@@ -66,8 +94,8 @@ flowchart TD
   Y --> Z[Mark as Disabled]
   Z --> AA[Remove from Heap]
   
-  X --> G
-  AA --> G
+  X --> E
+  AA --> E
   
   R4 --> BB[Wait for Running Tasks to Complete]
   BB --> CC[Close Channels]
@@ -77,33 +105,33 @@ flowchart TD
 </details>
 
 <details>
-<summary>Dependency Workflow</summary>
+<summary>Dependency Process</summary>
 
 ```mermaid
 flowchart TD
-    A[Add Task to Execution Queue] --> B{Check Dependencies}
-    B -->|No Dependencies| B0[Skip Dependency Workflow]
+    A[Task Added to Execution Queue] --> B{Check Dependencies}
+    B -->|No Dependencies| B0[Skip Dependency Process]
       B0 --> Z[End]
-    B -->|Has Dependencies| B1{Dependencies Completed?}
+    B -->|Has Dependencies| B1{Dependencies Complete?}
       B1 -->|No| B10[Wait for Dependencies]
-        B10 --> C{Dependency Timeout?}
+        B10 --> C{Dependency Wait Timeout?}
           C -->|No| C0[Continue Waiting]
             C0 --> D{Dependency Resolved?}
-              D -->|Failed<br>Mark Failure| V
+              D -->|Failed<br>Mark Failed| V
               D -->|Completed| B11
               D -->|Still Waiting| B10
-          C -->|Yes<br>Mark Failure| V
+          C -->|Yes<br>Mark Failed| V
       B1 -->|Yes| B11[Execute]
-        B11 -->|Mark as Running| E{Task Timeout Exists?}
+        B11 -->|Mark Running| E{Task Timeout Exists?}
           E -->|No| E0[Execute Action]
             E0 --> R{Execution Result}
-              R -->|Success<br>Mark Completed| V[Update Task Result]
-              R -->|Error<br>Mark Failure| V
-              R -->|Panic<br>Recover and Mark Failure| V
+              R -->|Success<br>Mark Complete| V[Update Task Result]
+              R -->|Error<br>Mark Failed| V
+              R -->|Panic<br>Recover and Mark Failed| V
           E -->|Yes| E1{Task Timeout?}
-            E1 -->|Timeout<br>Mark Failure<br>Trigger Timeout Action| V
-            E1 -->|Not Timed Out| E0
-      B1 -->|Failed<br>Mark Failure| V
+            E1 -->|Timeout<br>Mark Failed<br>Trigger Timeout Action| V
+            E1 -->|Not Timeout| E0
+      B1 -->|Failed<br>Mark Failed| V
     
     V --> X[Record Execution Result]
     X --> Y[Notify Dependent Tasks]
@@ -115,13 +143,20 @@ flowchart TD
 ## Dependencies
 
 - ~~[`github.com/pardnchiu/go-logger`](https://github.com/pardnchiu/go-logger)~~ (< v0.3.1)<br>
-  Starting from `v0.3.1`, non-standard libraries are deprecated for performance and stability. Replaced with `log/slog`.
+  For performance and stability, non-standard library packages are deprecated from `v0.3.1`, now using `log/slog`
 
 ## Usage
 
 ### Installation
+
+> [!NOTE]
+> Latest commit may change, recommended to use tagged versions<br>
+> Commits containing only documentation updates or non-functional changes will be rebased later
+
 ```bash
-go get github.com/pardnchiu/go-cron
+go get github.com/pardnchiu/go-cron@[VERSION]
+
+git clone --depth 1 --branch [VERSION] https://github.com/pardnchiu/go-cron.git
 ```
 
 ### Initialization
@@ -218,13 +253,13 @@ func main() {
     fmt.Println("Generating report...")
     time.Sleep(1 * time.Second)
     return nil
-  }, "Report generation", []int64{taskA, taskB})
+  }, "Report generation", []Wait{{ID: taskA}, {ID: taskB}})
   
   // Task D: Email sending (depends on C)
   _, _ = scheduler.Add("0 4 * * *", func() error {
     fmt.Println("Sending email...")
     return nil
-  }, "Email notification", []int64{taskC})
+  }, "Email notification", []Wait{{ID: taskC}})
   
   time.Sleep(10 * time.Second)
 }
@@ -294,30 +329,30 @@ scheduler.Add("@every 12h", task)
 
 ### Scheduler Management
 
-- `New()` - Create a new scheduler instance
+- `New()` - Create new scheduler instance
   ```go
   scheduler, err := cron.New(config)
   ```
   - Sets up task heap and communication channels
 
-- `Start()` - Start the scheduler instance
+- `Start()` - Start scheduler instance
   ```go
   scheduler.Start()
   ```
   - Starts the scheduling loop
 
-- `Stop()` - Stop the scheduler
+- `Stop()` - Stop scheduler
   ```go
   ctx := scheduler.Stop()
   <-ctx.Done() // Wait for all tasks to complete
   ```
-  - Sends a stop signal to the main loop
-  - Returns a context that completes when all running tasks finish
+  - Sends stop signal to main loop
+  - Returns context that completes when all running tasks finish
   - Ensures graceful shutdown without interrupting tasks
 
 ### Task Management
 
-- `Add()` - Add a scheduled task
+- `Add()` - Add scheduled task
   ```go
   // Basic usage (no return value)
   taskID, err := scheduler.Add("0 */2 * * *", func() {
@@ -349,29 +384,33 @@ scheduler.Add("@every 12h", task)
   taskID, err := scheduler.Add("@daily", func() error {
     // Task that depends on other tasks
     return processData()
-  }, "Data processing", []int64{taskA, taskB})
+  }, "Data processing", []Wait{{ID: taskA}, {ID: taskB}})
 
   // Task with dependencies and timeout
   taskID, err := scheduler.Add("@daily", func() error {
     return generateReport()
-  }, "Report generation", []int64{taskA, taskB}, 10*time.Minute)
+  }, "Report generation", []Wait{
+    {ID: taskA, Delay: 30 * time.Second},
+    {ID: taskB, Delay: 45 * time.Second},
+  })
   ```
-  - Parses scheduling syntax
-  - Generates a unique task ID for management
-  - Supports variable parameter configurations
+  - Parses schedule syntax
+  - Generates unique task ID for management
+  - Supports variadic parameter configuration
     - `string`: Task description
     - `time.Duration`: Task execution timeout
-    - `func()`: Timeout callback function
-    - `[]int64`: Dependency task ID list
-  - Supports two types of action functions
-    - `func()`: No error return, no dependency support
-    - `func() error`: Error return, supports dependencies
+    - `func()`: Callback function triggered on timeout
+    - `[]Wait`: Dependency task configuration (recommended format)
+    - `[]int64`: Dependency task ID list (will be removed after v2.0)
+  - Supports two action function types
+    - `func()`: No error return, doesn't support dependencies
+    - `func() error`: Has error return, supports dependencies
 
-- `Remove()` - Cancel a scheduled task
+- `Remove()` - Cancel task schedule
   ```go
   scheduler.Remove(taskID)
   ```
-  - Removes the task from the scheduling queue
+  - Removes task from scheduling queue
   - Safe to call regardless of scheduler state
 
 - `RemoveAll()` - Remove all tasks
@@ -379,9 +418,9 @@ scheduler.Add("@every 12h", task)
   scheduler.RemoveAll()
   ```
   - Immediately removes all scheduled tasks
-  - Does not affect tasks currently running
+  - Doesn't affect currently running tasks
 
-- `List()` - Retrieve the task list
+- `List()` - Get task list
   ```go
   tasks := scheduler.List()
   ```
@@ -389,52 +428,90 @@ scheduler.Add("@every 12h", task)
 ## Task Dependencies 
 
 ### Basic Usage
-- No dependencies: Executes directly
-- With dependencies: Executes using a worker pool and dependency manager
+- No dependencies: Execute directly
+- Has dependencies: Execute through worker pool and dependency manager
   - Single dependency: Task B executes after Task A completes
-  - Multiple dependencies: Task C waits for both Task A and B to complete before executing
-  - Dependency timeout: Maximum wait time for dependent tasks to complete (default: 1 minute)
-    
+  - Multiple dependencies: Task C waits for both Task A and B to complete
+  - Dependency task timeout: Maximum time to wait for dependency completion (default 1 minute)
 
-### Task States
+### Dependency Examples
+
+**Failure handling strategies**:
+```go
+// Skip: Continue execution when dependency fails
+taskC, _ := scheduler.Add("0 3 * * *", func() error {
+    fmt.Println("Generating report...")
+    return nil
+}, "Report generation", []Wait{
+    {ID: taskA, State: Skip},  // Skip when taskA fails
+    {ID: taskB, State: Stop},  // Stop when taskB fails (default)
+})
+```
+
+**Custom timeout**:
+```go
+// Set independent wait time for each dependency
+taskC, _ := scheduler.Add("0 3 * * *", func() error {
+    fmt.Println("Generating report...")
+    return nil
+}, "Report generation", []Wait{
+    {ID: taskA, Delay: 30 * time.Second},  // Wait 30 seconds
+    {ID: taskB, Delay: 45 * time.Second},  // Wait 45 seconds
+})
+```
+
+**Combined usage**:
+```go
+// Combine failure strategies with custom timeout
+taskC, _ := scheduler.Add("0 3 * * *", func() error {
+    fmt.Println("Generating report...")
+    return nil
+}, "Report generation", []Wait{
+    {ID: taskA, Delay: 30 * time.Second, State: Skip},
+    {ID: taskB, Delay: 45 * time.Second, State: Stop},
+})
+```
+
+### Task Status
 ```go
 const (
     TaskPending     // Waiting
     TaskRunning     // Running 
     TaskCompleted   // Completed
     TaskFailed      // Failed / Timeout
-    TaskSkipped     // Skipped (will add skip parameter)
 )
 ```
 
 ## Timeout Mechanism
-When execution time exceeds the configured `Delay`:
+When execution time exceeds the set `Delay`:
 - Interrupts task execution
-- Triggers the `OnDelay` function (if configured)
-- Logs timeout events
-- Continues with the next scheduled task
+- Triggers `OnDelay` function (if set)
+- Logs timeout
+- Continues with next schedule
 
 ### Features
 - Timeout implemented using `context.WithTimeout`
-- Timeout does not affect other task executions
-- If the action completes before timeout, no timeout is triggered
+- Timeout doesn't affect other task execution
+- If action completes before timeout, timeout won't trigger
 
 ## Upcoming Features
 
 ### Enhanced Task Dependencies
 
-- Custom timeout: Replace fixed 1-minute timeout with user-defined settings
-- Failure actions: Set dependency failure behavior to `Skip` (skip current task) or `Stop` (stop entire dependency chain), enabling flexible error handling
-- Status callbacks: Add `OnTimeout` and `OnFailed` callback functions for monitoring and responding to abnormal dependency states
+- Status callbacks: Add `OnTimeout` and `OnFailed` callback functions for monitoring and responding to dependency task exception states
 
-### Task Completion Trigger Rewrite
+### Task Completion Trigger Refactor
 
-- Event-driven: Replace current polling with a fully `channel`-based model to reduce CPU usage
-- Dependency wake-up: Implement active notification mechanism for dependent task completion, eliminating unnecessary polling checks
+- Event-driven: Replace current polling with fully `channel`-based approach to reduce CPU usage
+- Dependency awakening: Implement active notification mechanism when dependency tasks complete, eliminating ineffective polling checks
 
 ## License
 
 This project is licensed under [MIT](LICENSE).
+
+## Star
+
+[![Star](https://api.star-history.com/svg?repos=pardnchiu/go-cron&type=Date)](https://www.star-history.com/#pardnchiu/go-cron&Date)
 
 ## Author
 

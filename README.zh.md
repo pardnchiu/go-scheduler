@@ -3,12 +3,44 @@
 > 輕量的 Golang 排程器，支援標準 cron 表達式、自定義描述符、自訂間隔和任務依賴關係。輕鬆使用 Go 撰寫排程<br>
 > 原本是設計給 [pardnchiu/go-ip-sentry](https://github.com/pardnchiu/go-ip-sentry) 威脅分數衰退計算所使用到的排程功能
 
-![lang](https://img.shields.io/github/languages/top/pardnchiu/go-cron)
-[![license](https://img.shields.io/github/license/pardnchiu/go-cron)](LICENSE)
-[![version](https://img.shields.io/github/v/tag/pardnchiu/go-cron)](https://github.com/pardnchiu/go-cron/releases)
-![card](https://goreportcard.com/badge/github.com/pardnchiu/go-cron)<br>
+[![pkg](https://pkg.go.dev/badge/github.com/pardnchiu/go-cron.svg)](https://pkg.go.dev/github.com/pardnchiu/go-cron)
+[![card](https://goreportcard.com/badge/github.com/pardnchiu/go-cron)](https://goreportcard.com/report/github.com/pardnchiu/go-cron)
+[![codecov](https://img.shields.io/codecov/c/github/pardnchiu/go-cron)](https://app.codecov.io/github/pardnchiu/go-cron)
+[![version](https://img.shields.io/github/v/tag/pardnchiu/go-cron?label=release)](https://github.com/pardnchiu/go-cron/releases)
+[![license](https://img.shields.io/github/license/pardnchiu/go-cron)](LICENSE)<br>
 [![readme](https://img.shields.io/badge/readme-EN-white)](README.md)
 [![readme](https://img.shields.io/badge/readme-ZH-white)](README.zh.md)
+
+- [三大核心特色](#三大核心特色)
+  - [靈活語法](#靈活語法)
+  - [任務依賴](#任務依賴)
+  - [高效架構](#高效架構)
+- [流程圖](#流程圖)
+- [依賴套件](#依賴套件)
+- [使用方法](#使用方法)
+  - [安裝](#安裝)
+  - [初始化](#初始化)
+    - [基本使用](#基本使用)
+    - [任務依賴](#任務依賴-1)
+- [配置介紹](#配置介紹)
+- [支援格式](#支援格式)
+  - [標準](#標準)
+  - [自定義](#自定義)
+- [可用函式](#可用函式)
+  - [排程管理](#排程管理)
+  - [任務管理](#任務管理)
+- [任務依賴](#任務依賴-2)
+  - [基本使用](#基本使用-1)
+  - [依賴範例](#依賴範例)
+  - [任務狀態](#任務狀態)
+- [超時機制](#超時機制)
+  - [特點](#特點)
+- [功能預告](#功能預告)
+  - [任務依賴增強](#任務依賴增強)
+  - [任務完成觸發改寫](#任務完成觸發改寫)
+- [授權條款](#授權條款)
+- [星](#星)
+- [作者](#作者)
 
 ## 三大核心特色
 
@@ -114,8 +146,15 @@ flowchart TD
 ## 使用方法
 
 ### 安裝
+
+> [!NOTE]
+> 最新 commit 可能會變動，建議使用標籤版本<br>
+> 針對僅包含文檔更新等非功能改動的 commit，後續會進行 rebase
+
 ```bash
-go get github.com/pardnchiu/go-cron
+go get github.com/pardnchiu/go-cron@[VERSION]
+
+git clone --depth 1 --branch [VERSION] https://github.com/pardnchiu/go-cron.git
 ```
 
 ### 初始化
@@ -212,13 +251,13 @@ func main() {
     fmt.Println("Generating report...")
     time.Sleep(1 * time.Second)
     return nil
-  }, "Report generation", []int64{taskA, taskB})
+  }, "Report generation", []Wait{{ID: taskA}, {ID: taskB}})
   
   // Task D: Email sending (depends on C)
   _, _ = scheduler.Add("0 4 * * *", func() error {
     fmt.Println("Sending email...")
     return nil
-  }, "Email notification", []int64{taskC})
+  }, "Email notification", []Wait{{ID: taskC}})
   
   time.Sleep(10 * time.Second)
 }
@@ -343,12 +382,15 @@ scheduler.Add("@every 12h", task)
   taskID, err := scheduler.Add("@daily", func() error {
     // Task that depends on other tasks
     return processData()
-  }, "Data processing", []int64{taskA, taskB})
+  }, "Data processing", []Wait{{ID: taskA}, {ID: taskB}})
 
   // Task with dependencies and timeout
   taskID, err := scheduler.Add("@daily", func() error {
     return generateReport()
-  }, "Report generation", []int64{taskA, taskB}, 10*time.Minute)
+  }, "Report generation", []Wait{
+    {ID: taskA, Delay: 30 * time.Second},
+    {ID: taskB, Delay: 45 * time.Second},
+  })
   ```
   - 解析排程語法
   - 產生唯一的任務 ID 以便管理
@@ -356,7 +398,8 @@ scheduler.Add("@every 12h", task)
     - `string`：任務描述
     - `time.Duration`：任務執行超時時間
     - `func()`：超時觸發的回調函式
-    - `[]int64`：依賴任務 ID 列表
+    - `[]Wait`：依賴任務配置（推薦格式）
+    - `[]int64`：依賴任務 ID 列表（v2.0 後將移除）
   - 支援兩種動作函式
     - `func()`：無錯誤返回，不支援依賴
     - `func() error`：有錯誤返回，支援依賴
@@ -388,7 +431,44 @@ scheduler.Add("@every 12h", task)
   - 單一依賴：任務 B 在任務 A 完成後執行
   - 多重依賴：任務 C 等待任務 A、B 全部完成後執行
   - 依賴任務超時：等待依賴任務完成的最大時間（預設 1 分鐘）
-    
+
+### 依賴範例
+
+**失敗處理策略**：
+```go
+// Skip：依賴失敗時跳過並繼續執行
+taskC, _ := scheduler.Add("0 3 * * *", func() error {
+    fmt.Println("Generating report...")
+    return nil
+}, "Report generation", []Wait{
+    {ID: taskA, State: Skip},  // taskA 失敗時跳過
+    {ID: taskB, State: Stop},  // taskB 失敗時停止（預設）
+})
+```
+
+**自定義超時時間**：
+```go
+// 為每個依賴設定獨立的等待時間
+taskC, _ := scheduler.Add("0 3 * * *", func() error {
+    fmt.Println("Generating report...")
+    return nil
+}, "Report generation", []Wait{
+    {ID: taskA, Delay: 30 * time.Second},  // 等待 30 秒
+    {ID: taskB, Delay: 45 * time.Second},  // 等待 45 秒
+})
+```
+
+**組合使用**：
+```go
+// 結合失敗策略和自定義超時
+taskC, _ := scheduler.Add("0 3 * * *", func() error {
+    fmt.Println("Generating report...")
+    return nil
+}, "Report generation", []Wait{
+    {ID: taskA, Delay: 30 * time.Second, State: Skip},
+    {ID: taskB, Delay: 45 * time.Second, State: Stop},
+})
+```
 
 ### 任務狀態
 ```go
@@ -397,7 +477,6 @@ const (
     TaskRunning     // Running 
     TaskCompleted   // Completed
     TaskFailed      // Failed / Timeout
-    TaskSkipped     // Skipped (will add skip parameter)
 )
 ```
 
@@ -413,13 +492,11 @@ const (
 - 超時不會影響其他任務的執行
 - 如果動作在超時前完成，不會觸發超時
 
-## 功能預告
+## 功能評估
 
 ### 任務依賴增強
 
-- 自行設置超時：移除固定的 1 分鐘超時，改為用戶自行設定
-- 失敗動作：可提前設置依賴失敗時是 `Skip`（跳過當前任務）或 `Stop`（停止整個依賴鏈），提供更靈活的錯誤處理
-- 狀態回調：新增 OnTimeout 和 OnFailed 回調函數，方便監控和響應依賴任務的異常狀態
+- 狀態回調：新增 `OnTimeout` 和 `OnFailed` 回調函數，方便監控和響應依賴任務的異常狀態
 
 ### 任務完成觸發改寫
 
@@ -429,6 +506,10 @@ const (
 ## 授權條款
 
 此專案採用 [MIT](LICENSE) 授權條款。
+
+## 星
+
+[![Star](https://api.star-history.com/svg?repos=pardnchiu/go-cron&type=Date)](https://www.star-history.com/#pardnchiu/go-cron&Date)
 
 ## 作者
 

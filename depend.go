@@ -16,7 +16,7 @@ func newDepend() *depend {
 	return &depend{
 		manager:  newDependManager(),
 		stopChan: make(chan struct{}),
-		queue:    make(chan int64),
+		queue:    make(chan Wait, 1024),
 	}
 }
 
@@ -61,17 +61,25 @@ func (d *depend) worker() {
 	}
 }
 
-func (d *depend) add(id int64) {
-	d.queue <- id
+func (d *depend) addWait(id int64, delay time.Duration, state WaitState) {
+	var timeout = 1 * time.Minute
+	if delay > 0 {
+		timeout = delay
+	}
+	d.queue <- Wait{
+		ID:    id,
+		Delay: timeout,
+		State: state,
+	}
 }
 
 // * Worker 執行的排序（v0.4.0 對 Worker 數進行了限制）
-func (d *depend) runAfter(id int64) {
-	task, isExist := d.manager.list[id]
+func (d *depend) runAfter(queue Wait) {
+	task, isExist := d.manager.list[queue.ID]
 	if !isExist {
-		logger.Error(
+		d.logger.Error(
 			"Task not found",
-			"ID", int(id),
+			"ID", int(queue.ID),
 		)
 		return
 	}
@@ -84,20 +92,18 @@ func (d *depend) runAfter(id int64) {
 		return
 	}
 
-	// TODO: 後續改為用戶自己決定超時時間
-	// * 設置超時等待（預設 1 分鐘）
-	if err := d.manager.wait(id, 1*time.Minute); err != nil {
+	if err := d.manager.wait(queue.ID, queue.Delay); err != nil {
 		result := taskResult{
-			ID:     id,
+			ID:     queue.ID,
 			status: TaskFailed,
 			start:  time.Now(),
 			end:    time.Now(),
 			error:  err,
 		}
 		d.manager.update(result)
-		logger.Error(
+		d.logger.Error(
 			"Dependence Task failed",
-			"ID", int(id),
+			"ID", int(queue.ID),
 			"error", err,
 		)
 		return
@@ -113,7 +119,7 @@ func (d *depend) run(task *task) {
 	task.state = TaskRunning
 	task.mutex.Unlock()
 
-	logger.Info(
+	d.logger.Info(
 		"Task started",
 		"ID", int(task.ID),
 		"description", task.description,
@@ -125,7 +131,7 @@ func (d *depend) run(task *task) {
 		defer func() {
 			if r := recover(); r != nil {
 				taskError = fmt.Errorf("task panic: %v", r)
-				logger.Error(
+				d.logger.Error(
 					"Task panic",
 					"ID", int(task.ID),
 					"panic", r,
@@ -146,7 +152,7 @@ func (d *depend) run(task *task) {
 			case err := <-done:
 				taskError = err
 			case <-ctx.Done():
-				taskError = fmt.Errorf("Task timeout %d", task.delay)
+				taskError = fmt.Errorf("task timeout %d", task.delay)
 				if task.onDelay != nil {
 					task.onDelay()
 				}
@@ -176,14 +182,14 @@ func (d *depend) run(task *task) {
 	d.manager.update(result)
 
 	if taskError != nil {
-		logger.Error(
+		d.logger.Error(
 			"Task failed",
 			"ID", int(task.ID),
 			"duration", duration,
 			"error", taskError,
 		)
 	} else {
-		logger.Info(
+		d.logger.Info(
 			"Task completed",
 			"ID", int(task.ID),
 			"duration", duration,
