@@ -5,11 +5,11 @@
 > Lightweight Golang scheduler supporting standard cron expressions, custom descriptors, custom intervals, and task dependencies. Easy scheduling with Go<br>
 > Originally designed for the scheduling functionality used in threat score decay calculations for [pardnchiu/go-ip-sentry](https://github.com/pardnchiu/go-ip-sentry)
 
-[![pkg](https://pkg.go.dev/badge/github.com/pardnchiu/go-cron.svg)](https://pkg.go.dev/github.com/pardnchiu/go-cron)
-[![card](https://goreportcard.com/badge/github.com/pardnchiu/go-cron)](https://goreportcard.com/report/github.com/pardnchiu/go-cron)
-[![codecov](https://img.shields.io/codecov/c/github/pardnchiu/go-cron)](https://app.codecov.io/github/pardnchiu/go-cron)
-[![version](https://img.shields.io/github/v/tag/pardnchiu/go-cron?label=release)](https://github.com/pardnchiu/go-cron/releases)
-[![license](https://img.shields.io/github/license/pardnchiu/go-cron)](LICENSE)<br>
+[![pkg](https://pkg.go.dev/badge/github.com/pardnchiu/go-scheduler.svg)](https://pkg.go.dev/github.com/pardnchiu/go-scheduler)
+[![card](https://goreportcard.com/badge/github.com/pardnchiu/go-scheduler)](https://goreportcard.com/report/github.com/pardnchiu/go-scheduler)
+[![codecov](https://img.shields.io/codecov/c/github/pardnchiu/go-scheduler)](https://app.codecov.io/github/pardnchiu/go-scheduler)
+[![version](https://img.shields.io/github/v/tag/pardnchiu/go-scheduler?label=release)](https://github.com/pardnchiu/go-scheduler/releases)
+[![license](https://img.shields.io/github/license/pardnchiu/go-scheduler)](LICENSE)<br>
 [![readme](https://img.shields.io/badge/readme-EN-white)](README.md)
 [![readme](https://img.shields.io/badge/readme-ZH-white)](README.zh.md)
 
@@ -154,9 +154,9 @@ flowchart TD
 > Commits containing only documentation updates or non-functional changes will be rebased later
 
 ```bash
-go get github.com/pardnchiu/go-cron@[VERSION]
+go get github.com/pardnchiu/go-scheduler@[VERSION]
 
-git clone --depth 1 --branch [VERSION] https://github.com/pardnchiu/go-cron.git
+git clone --depth 1 --branch [VERSION] https://github.com/pardnchiu/go-scheduler.git
 ```
 
 ### Initialization
@@ -170,7 +170,7 @@ import (
   "log"
   "time"
   
-  cron "github.com/pardnchiu/go-cron"
+  cron "github.com/pardnchiu/go-scheduler"
 )
 
 func main() {
@@ -219,7 +219,7 @@ import (
   "log"
   "time"
   
-  cron "github.com/pardnchiu/go-cron"
+  cron "github.com/pardnchiu/go-scheduler"
 )
 
 func main() {
@@ -511,7 +511,7 @@ This project is licensed under [MIT](LICENSE).
 
 ## Star
 
-[![Star](https://api.star-history.com/svg?repos=pardnchiu/go-cron&type=Date)](https://www.star-history.com/#pardnchiu/go-cron&Date)
+[![Star](https://api.star-history.com/svg?repos=pardnchiu/go-scheduler&type=Date)](https://www.star-history.com/#pardnchiu/go-scheduler&Date)
 
 ## Author
 

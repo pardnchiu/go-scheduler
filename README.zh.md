@@ -3,11 +3,11 @@
 > 輕量的 Golang 排程器，支援標準 cron 表達式、自定義描述符、自訂間隔和任務依賴關係。輕鬆使用 Go 撰寫排程<br>
 > 原本是設計給 [pardnchiu/go-ip-sentry](https://github.com/pardnchiu/go-ip-sentry) 威脅分數衰退計算所使用到的排程功能
 
-[![pkg](https://pkg.go.dev/badge/github.com/pardnchiu/go-cron.svg)](https://pkg.go.dev/github.com/pardnchiu/go-cron)
-[![card](https://goreportcard.com/badge/github.com/pardnchiu/go-cron)](https://goreportcard.com/report/github.com/pardnchiu/go-cron)
-[![codecov](https://img.shields.io/codecov/c/github/pardnchiu/go-cron)](https://app.codecov.io/github/pardnchiu/go-cron)
-[![version](https://img.shields.io/github/v/tag/pardnchiu/go-cron?label=release)](https://github.com/pardnchiu/go-cron/releases)
-[![license](https://img.shields.io/github/license/pardnchiu/go-cron)](LICENSE)<br>
+[![pkg](https://pkg.go.dev/badge/github.com/pardnchiu/go-scheduler.svg)](https://pkg.go.dev/github.com/pardnchiu/go-scheduler)
+[![card](https://goreportcard.com/badge/github.com/pardnchiu/go-scheduler)](https://goreportcard.com/report/github.com/pardnchiu/go-scheduler)
+[![codecov](https://img.shields.io/codecov/c/github/pardnchiu/go-scheduler)](https://app.codecov.io/github/pardnchiu/go-scheduler)
+[![version](https://img.shields.io/github/v/tag/pardnchiu/go-scheduler?label=release)](https://github.com/pardnchiu/go-scheduler/releases)
+[![license](https://img.shields.io/github/license/pardnchiu/go-scheduler)](LICENSE)<br>
 [![readme](https://img.shields.io/badge/readme-EN-white)](README.md)
 [![readme](https://img.shields.io/badge/readme-ZH-white)](README.zh.md)
 
@@ -152,9 +152,9 @@ flowchart TD
 > 針對僅包含文檔更新等非功能改動的 commit，後續會進行 rebase
 
 ```bash
-go get github.com/pardnchiu/go-cron@[VERSION]
+go get github.com/pardnchiu/go-scheduler@[VERSION]
 
-git clone --depth 1 --branch [VERSION] https://github.com/pardnchiu/go-cron.git
+git clone --depth 1 --branch [VERSION] https://github.com/pardnchiu/go-scheduler.git
 ```
 
 ### 初始化
@@ -168,7 +168,7 @@ import (
   "log"
   "time"
   
-  cron "github.com/pardnchiu/go-cron"
+  cron "github.com/pardnchiu/go-scheduler"
 )
 
 func main() {
@@ -217,7 +217,7 @@ import (
   "log"
   "time"
   
-  cron "github.com/pardnchiu/go-cron"
+  cron "github.com/pardnchiu/go-scheduler"
 )
 
 func main() {
@@ -509,7 +509,7 @@ const (
 
 ## 星
 
-[![Star](https://api.star-history.com/svg?repos=pardnchiu/go-cron&type=Date)](https://www.star-history.com/#pardnchiu/go-cron&Date)
+[![Star](https://api.star-history.com/svg?repos=pardnchiu/go-scheduler&type=Date)](https://www.star-history.com/#pardnchiu/go-scheduler&Date)
 
 ## 作者
 

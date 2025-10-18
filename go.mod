@@ -1,4 +1,4 @@
-module github.com/pardnchiu/go-cron
+module github.com/pardnchiu/go-scheduler
 
 go 1.23
 
