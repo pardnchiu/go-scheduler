@@ -1,6 +1,6 @@
 > [!NOTE]
 > This README was translated by ChatGPT 4o
-# Cron Scheduler
+# Go Scheduler
 
 > Lightweight Golang scheduler supporting standard cron expressions, custom descriptors, custom intervals, and task dependencies. Easy scheduling with Go<br>
 > Originally designed for the scheduling functionality used in threat score decay calculations for [pardnchiu/go-ip-sentry](https://github.com/pardnchiu/go-ip-sentry)
@@ -9,7 +9,8 @@
 [![card](https://goreportcard.com/badge/github.com/pardnchiu/go-scheduler)](https://goreportcard.com/report/github.com/pardnchiu/go-scheduler)
 [![codecov](https://img.shields.io/codecov/c/github/pardnchiu/go-scheduler)](https://app.codecov.io/github/pardnchiu/go-scheduler)
 [![version](https://img.shields.io/github/v/tag/pardnchiu/go-scheduler?label=release)](https://github.com/pardnchiu/go-scheduler/releases)
-[![license](https://img.shields.io/github/license/pardnchiu/go-scheduler)](LICENSE)<br>
+[![license](https://img.shields.io/github/license/pardnchiu/go-scheduler)](LICENSE)
+[![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)<br>
 [![readme](https://img.shields.io/badge/readme-EN-white)](README.md)
 [![readme](https://img.shields.io/badge/readme-ZH-white)](README.zh.md)
 

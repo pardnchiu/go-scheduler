@@ -1,4 +1,4 @@
-# Cron 定時排程
+# Go 定時排程
 
 > 輕量的 Golang 排程器，支援標準 cron 表達式、自定義描述符、自訂間隔和任務依賴關係。輕鬆使用 Go 撰寫排程<br>
 > 原本是設計給 [pardnchiu/go-ip-sentry](https://github.com/pardnchiu/go-ip-sentry) 威脅分數衰退計算所使用到的排程功能
@@ -7,7 +7,8 @@
 [![card](https://goreportcard.com/badge/github.com/pardnchiu/go-scheduler)](https://goreportcard.com/report/github.com/pardnchiu/go-scheduler)
 [![codecov](https://img.shields.io/codecov/c/github/pardnchiu/go-scheduler)](https://app.codecov.io/github/pardnchiu/go-scheduler)
 [![version](https://img.shields.io/github/v/tag/pardnchiu/go-scheduler?label=release)](https://github.com/pardnchiu/go-scheduler/releases)
-[![license](https://img.shields.io/github/license/pardnchiu/go-scheduler)](LICENSE)<br>
+[![license](https://img.shields.io/github/license/pardnchiu/go-scheduler)](LICENSE)
+[![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)<br>
 [![readme](https://img.shields.io/badge/readme-EN-white)](README.md)
 [![readme](https://img.shields.io/badge/readme-ZH-white)](README.zh.md)
 
