@@ -1,13 +1,13 @@
-package goCron
+package core
 
-func (c *cron) List() []task {
+func (c *cron) List() []*task {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	tasks := make([]task, 0, len(c.heap))
+	tasks := make([]*task, 0, len(c.heap))
 	for _, t := range c.heap {
 		if t.enable {
-			tasks = append(tasks, *t)
+			tasks = append(tasks, t)
 		}
 	}
 	return tasks
@@ -25,11 +25,11 @@ func (h taskHeap) Swap(i, j int) {
 	h[i], h[j] = h[j], h[i]
 }
 
-func (h *taskHeap) Push(x interface{}) {
+func (h *taskHeap) Push(x any) {
 	*h = append(*h, x.(*task))
 }
 
-func (h *taskHeap) Pop() interface{} {
+func (h *taskHeap) Pop() any {
 	old := *h
 	n := len(old)
 	item := old[n-1]
