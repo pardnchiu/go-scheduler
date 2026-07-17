@@ -1,4 +1,4 @@
-package goCron
+package core
 
 import (
 	"log/slog"
