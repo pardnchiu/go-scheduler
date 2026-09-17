@@ -6,19 +6,24 @@
 
 ```mermaid
 graph TB
-    App[Application] --> Cron[Cron Scheduler]
+    App[Caller] --> Cron[Cron Scheduler]
     Cron --> Parser[Expression Parser]
     Cron --> Heap[Task Min-Heap]
-    Cron --> Depend[Dependency Subsystem]
+    Cron --> Logger[slog Logger]
+    Heap --> Loop[Event Loop]
+    Loop -->|no deps| Runner[Direct goroutine run]
+    Loop -->|has deps| Depend[Dependency Subsystem]
     Depend --> Manager[Depend Manager]
     Depend --> Workers[Worker Pool]
-    Heap --> Runner[Task Runner]
-    Workers --> Runner
+    Workers --> DepRunner[Dependent task run]
+    Runner --> State[Task State]
+    DepRunner --> Manager
+    Manager --> State
 ```
 
 ## Module: Cron Scheduler
 
-Owns lifecycle, task registration, and the time-driven main loop.
+Owns the lifecycle, task registration, and the time-driven event loop.
 
 ```mermaid
 graph TB
@@ -29,13 +34,21 @@ graph TB
         Instance --> Add[Add]
         Instance --> Remove[Remove / RemoveAll]
         Instance --> List[List]
-        Start --> Loop[Main event loop]
+        Start --> Loop[Event loop goroutine]
         Loop --> Timer[Nearest-task timer]
-        Loop --> Channels[add / remove / stop channels]
+        Loop --> Channels[add / remove / removeAll / stop channels]
+        Add -->|running| Channels
+        Remove -->|running| Channels
+        Add -->|not started| HeapDirect[Write heap directly]
+        Remove -->|not started| HeapDirect
+        Stop --> WaitGroup[WaitGroup for in-flight tasks]
     end
     App[Caller] --> New
     App --> Start
     App --> Add
+    New --> Syslog{syslog available?}
+    Syslog -->|yes| JSON[JSON handler to syslog]
+    Syslog -->|no| Text[Text handler to stderr]
 ```
 
 ## Module: Expression Parser
@@ -45,106 +58,120 @@ Turns string specs into `schedule` implementations.
 ```mermaid
 graph TB
     subgraph Parser
-        Parse[parse spec] --> Descriptor{Starts with @?}
-        Descriptor -->|yes| Desc[parseDescriptor]
-        Descriptor -->|no| Cron5[parseCron 5 fields]
-        Desc --> Delay[delayScheduleResult]
-        Desc --> Fixed[scheduleResult fixed time]
+        Parse[parse spec] --> IsDesc{Starts with @?}
+        IsDesc -->|yes| Desc[parseDescriptor]
+        IsDesc -->|no| Cron5[parseCron 5 fields]
+        Desc --> Every{@every?}
+        Every -->|yes and >= 30s| Delay[delayScheduleResult]
+        Every -->|no| Fixed[scheduleResult fixed fields]
         Cron5 --> Field[parseField]
-        Field --> All[All *]
-        Field --> Step[Step */n]
-        Field --> Range[Range n-m]
-        Field --> List[List a,b,c]
-        Field --> Value[Single n]
+        Field --> All[* all]
+        Field --> Step[*/n step]
+        Field --> List[a,b list parseList]
+        Field --> Range[n-m range parseRange]
+        Field --> Value[n single]
+        List --> Range
+        Field --> Result[scheduleResult]
     end
     Add[Add] --> Parse
     Delay --> Next1[next = now + delay]
-    Fixed --> Next2[next = next matching minute]
+    Fixed --> Next2[Step minute by minute until all 5 fields match]
+    Result --> Next2
 ```
 
 ## Module: Task Min-Heap
 
-Orders tasks by `next` so the main loop always handles the nearest due task.
+Orders tasks by `next` so the event loop always handles the nearest due task first.
 
 ```mermaid
 graph TB
     subgraph Heap
         H[taskHeap] --> Less[Less: earlier next first]
-        H --> Push[Push new task]
-        H --> Pop[Pop due task]
-        H --> Remove[Remove by index]
+        H --> Push[Push]
+        H --> Pop[Pop]
+        H --> Remove[heap.Remove]
     end
-    Loop[Main loop] --> Pop
-    Add[Add task] --> Push
-    RemoveAPI[Remove API] --> Remove
+    Loop[Event loop] -->|due| Pop
+    Pop --> Enabled{enable?}
+    Enabled -->|no| Drop[Discard]
+    Enabled -->|yes| Run[cron.run]
+    Run --> Reschedule[Compute next fire time]
+    Reschedule -->|non-zero| Push
+    AddCh[add channel] --> Push
+    RemoveCh[remove channel] --> Remove
 ```
 
 ## Module: Dependency Subsystem
 
-When a task has `after` dependencies, the worker pool waits for prerequisites before running it.
+Tasks with dependencies enter a queue; the worker pool polls prerequisite states before running them.
 
 ```mermaid
 graph TB
     subgraph Depend
-        D[depend] --> Queue[Wait queue]
-        D --> W1[Worker 1]
-        D --> W2[Worker 2]
-        D --> Wn[Worker N = NumCPU]
-        Queue --> W1
-        Queue --> W2
-        Queue --> Wn
+        D[depend] --> Queue[Wait queue capacity 1024]
+        Queue --> W1[Worker 1]
+        Queue --> Wn[Worker N = max NumCPU, 2]
         W1 --> RunAfter[runAfter]
-        RunAfter --> Manager[dependManager]
-        Manager --> Check[check dependency state]
-        Manager --> Wait[wait with timeout]
-        Manager --> Update[update result]
+        Wn --> RunAfter
+        RunAfter --> Skip{State Running or Completed?}
+        Skip -->|yes| Ignore[Skip]
+        Skip -->|no| WaitDeps[manager.wait 1 minute limit]
+        WaitDeps -->|every 1ms| Check[manager.check]
+        Check --> Done{All prerequisites done?}
+        Done -->|yes| Exec[depend.run]
+        Done -->|Stop policy failure / missing| Fail[update TaskFailed]
+        WaitDeps -->|timeout| Fail
+        Exec --> Update[manager.update]
     end
     CronRun[cron.run] -->|has deps| Queue
-    CronRun -->|no deps| Direct[runAfter direct]
+    Manager[dependManager list / waiting] --- Check
+    Manager --- Update
 ```
 
 ## Data Flow
 
 ```mermaid
 sequenceDiagram
-    participant App as Application
+    participant App as Caller
     participant Cron as Cron
-    participant Heap as Task Heap
+    participant Heap as Task Min-Heap
     participant Depend as Dependency Subsystem
     participant Task as Task action
-
     App->>Cron: New / Add / Start
-    Cron->>Heap: compute next and Init
-    loop Main loop
-        Cron->>Heap: wait for nearest next
-        Heap-->>Cron: due task
-        alt no dependencies
-            Cron->>Task: run directly
-        else has dependencies
+    Cron->>Heap: Compute next and heap.Init
+    loop Event loop
+        Cron->>Heap: Wait for nearest next
+        Heap-->>Cron: Due task
+        alt No dependencies
+            Cron->>Task: Run in goroutine (timeout and panic recover)
+        else Has dependencies
             Cron->>Depend: addWait
-            Depend->>Depend: wait for prerequisites
-            Depend->>Task: run after prerequisites complete
+            Depend->>Depend: Poll prerequisite states
+            Depend->>Task: Run after prerequisites complete
         end
-        Task-->>Cron: success / failure / timeout
-        Cron->>Heap: compute next next and Push
+        Task-->>Cron: Success / failure / timeout
+        Cron->>Heap: Compute next fire time and Push
     end
     App->>Cron: Stop
-    Cron-->>App: context cancels after in-flight finish
+    Cron->>Depend: Shut down worker pool
+    Cron-->>App: Context cancels after in-flight tasks finish
 ```
 
 ## State Machine
 
 ```mermaid
 stateDiagram-v2
-    [*] --> TaskPending: Add
-    TaskPending --> TaskRunning: trigger run
-    TaskRunning --> TaskCompleted: action success
-    TaskRunning --> TaskFailed: error / panic / timeout / dependency failure
-    TaskCompleted --> TaskPending: reschedule recurring task
-    TaskFailed --> TaskPending: reschedule recurring task
-    TaskPending --> [*]: Remove / disable
+    [*] --> TaskPending: Add (func() error)
+    [*] --> TaskCompleted: Add (func(), no deps)
+    TaskPending --> TaskRunning: Triggered
+    TaskPending --> TaskFailed: Dependency failure / wait timeout
+    TaskRunning --> TaskCompleted: Action succeeds
+    TaskRunning --> TaskFailed: Error / panic / timeout
+    TaskCompleted --> TaskRunning: Next trigger (no deps)
+    TaskFailed --> TaskRunning: Next trigger
+    TaskCompleted --> TaskCompleted: Next trigger (has deps, skipped)
 ```
 
 ***
 
-©️ 2025 [邱敬幃 Pardn Chiu](https://linkedin.com/in/pardnchiu)
+©️ 2025 [邱敬幃 Pardn Chiu](https://www.linkedin.com/in/pardnchiu)
