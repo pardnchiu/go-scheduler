@@ -137,7 +137,6 @@ sequenceDiagram
     participant Heap as Task Min-Heap
     participant Depend as Dependency Subsystem
     participant Task as Task action
-
     App->>Cron: New / Add / Start
     Cron->>Heap: Compute next and heap.Init
     loop Event loop

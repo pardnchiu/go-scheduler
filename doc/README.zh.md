@@ -8,11 +8,13 @@
 </p>
 
 <p align="center">
+
 <a href="https://pkg.go.dev/github.com/pardnchiu/go-scheduler/core"><img src="https://img.shields.io/badge/GO-REFERENCE-blue?include_prereleases&style=for-the-badge" alt="Go Reference"></a>
 <a href="https://github.com/pardnchiu/go-scheduler/releases"><img src="https://img.shields.io/github/v/tag/pardnchiu/go-scheduler?include_prereleases&style=for-the-badge" alt="Release"></a>
 <a href="../LICENSE"><img src="https://img.shields.io/github/license/pardnchiu/go-scheduler?include_prereleases&style=for-the-badge" alt="License"></a>
 <a href="https://app.codecov.io/github/pardnchiu/go-scheduler/tree/develop"><img src="https://img.shields.io/codecov/c/github/pardnchiu/go-scheduler/develop?include_prereleases&style=for-the-badge" alt="Coverage"></a><br>
 <a href="https://github.com/avelino/awesome-go"><img src="https://awesome.re/mentioned-badge.svg" height="40" alt="Mentioned in Awesome Go"></a>
+
 </p>
 
 ***

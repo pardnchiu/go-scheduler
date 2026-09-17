@@ -8,6 +8,7 @@
 </p>
 
 <p align="center">
+
 <a href="https://pkg.go.dev/github.com/pardnchiu/go-scheduler/core"><img src="https://img.shields.io/badge/GO-REFERENCE-blue?include_prereleases&style=for-the-badge" alt="Go Reference"></a>
 <a href="https://github.com/pardnchiu/go-scheduler/releases"><img src="https://img.shields.io/github/v/tag/pardnchiu/go-scheduler?include_prereleases&style=for-the-badge" alt="Release"></a>
 <a href="LICENSE"><img src="https://img.shields.io/github/license/pardnchiu/go-scheduler?include_prereleases&style=for-the-badge" alt="License"></a>
@@ -18,6 +19,7 @@
 ***
 
 > A Go scheduling library with task dependency chains, execution timeouts, and cron expressions
+
 
 ## Table of Contents
 
@@ -36,12 +38,14 @@
 - **Min-Heap Event Loop** — A min-heap tracks next fire times, so tasks can be added or removed while running.
 - **Graceful Shutdown** — `Stop` returns a context that completes only after in-flight tasks finish.
 
+
 ## Architecture
 
 > [Full Architecture](./doc/architecture.md)
 
 ```mermaid
 graph TB
+
     App[Caller] --> Cron[Cron Scheduler]
     Cron --> Parser[Expression Parser]
     Cron --> Heap[Task Min-Heap]
