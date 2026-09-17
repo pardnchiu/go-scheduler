@@ -1,14 +1,13 @@
 > [!NOTE]
 > 此 README 由 [SKILL](https://github.com/agenvoy/skill-readme-generate) 生成，英文版請參閱 [這裡](../README.md)。
 
-***
+---
 
 <p align="center">
 <strong>SCHEDULE TASKS WITH DEPENDENCIES, TIMEOUTS, AND CRON EXPRESSIONS</strong>
 </p>
 
 <p align="center">
-
 <a href="https://pkg.go.dev/github.com/pardnchiu/go-scheduler/core"><img src="https://img.shields.io/badge/GO-REFERENCE-blue?include_prereleases&style=for-the-badge" alt="Go Reference"></a>
 <a href="https://github.com/pardnchiu/go-scheduler/releases"><img src="https://img.shields.io/github/v/tag/pardnchiu/go-scheduler?include_prereleases&style=for-the-badge" alt="Release"></a>
 <a href="../LICENSE"><img src="https://img.shields.io/github/license/pardnchiu/go-scheduler?include_prereleases&style=for-the-badge" alt="License"></a>
@@ -17,7 +16,7 @@
 
 </p>
 
-***
+---
 
 > Go 排程函式庫，具備任務依賴鏈、執行超時控制與 Cron 表達式
 
@@ -67,6 +66,6 @@ Just [open an issue](https://github.com/pardnchiu/go-scheduler/issues/new) to sh
   <img src="https://contrib.rocks/image?repo=pardnchiu/go-scheduler&cache_bust=2026-09-17" alt="go-scheduler contributors" />
 </a>
 
-***
+---
 
 ©️ 2025 [邱敬幃 Pardn Chiu](https://www.linkedin.com/in/pardnchiu)
