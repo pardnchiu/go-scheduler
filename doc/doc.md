@@ -5,13 +5,20 @@
 ## Prerequisites
 
 - Go 1.23 or higher
+- A non-Windows platform (the logger depends on `log/syslog`; it falls back to stderr when syslog is unreachable)
 
 ## Installation
 
 ### Using go get
 
 ```bash
-go get github.com/pardnchiu/go-scheduler
+go get github.com/pardnchiu/go-scheduler@latest
+```
+
+The package lives in the `core` subdirectory:
+
+```go
+import "github.com/pardnchiu/go-scheduler/core"
 ```
 
 ### From Source
@@ -20,6 +27,7 @@ go get github.com/pardnchiu/go-scheduler
 git clone https://github.com/pardnchiu/go-scheduler.git
 cd go-scheduler
 go build ./...
+go test -race ./...
 ```
 
 ## Usage
@@ -32,8 +40,10 @@ Create a scheduler, add a task, and start it:
 package main
 
 import (
-	"fmt"
-	"time"
+	"context"
+	"log"
+	"os/signal"
+	"syscall"
 
 	"github.com/pardnchiu/go-scheduler/core"
 )
@@ -41,24 +51,25 @@ import (
 func main() {
 	c, err := core.New(core.Config{})
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	id, err := c.Add("@every 30s", func() {
-		fmt.Println("hello", time.Now())
+		log.Println("heartbeat")
 	}, "heartbeat")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	fmt.Println("task id:", id)
+	log.Println("task id:", id)
 
 	c.Start()
-	defer func() {
-		ctx := c.Stop()
-		<-ctx.Done()
-	}()
 
-	time.Sleep(2 * time.Minute)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	<-ctx.Done()
+
+	// wait for in-flight tasks
+	<-c.Stop().Done()
 }
 ```
 
@@ -67,99 +78,101 @@ func main() {
 ```go
 loc, err := time.LoadLocation("Asia/Taipei")
 if err != nil {
-	panic(err)
+	log.Fatal(err)
 }
 
-c, err := core.New(core.Config{
-	Location: loc,
-})
+c, err := core.New(core.Config{Location: loc})
 if err != nil {
-	panic(err)
+	log.Fatal(err)
 }
 ```
 
 ### Cron Expressions
 
-Standard 5-field expressions (minute hour day month weekday):
+Standard 5 fields (minute hour day month weekday):
 
 ```go
-// minute 0 of every hour
-c.Add("0 * * * *", func() error {
-	return doHourlyJob()
-})
+specs := map[string]func() error{
+	"0 * * * *":       doHourlyJob, // minute 0 of every hour
+	"30 9 * * 1-5":    sendReport,  // 09:30 Monday to Friday
+	"*/5 * * * *":     poll,        // minutes divisible by 5
+	"0 9,12,18 * * *": checkpoint,  // list
+}
 
-// 09:30 on weekdays
-c.Add("30 9 * * 1-5", func() error {
-	return sendReport()
-})
-
-// every 5 minutes
-c.Add("*/5 * * * *", func() error {
-	return poll()
-})
-
-// lists and ranges
-c.Add("0 9,12,18 * * *", func() error {
-	return checkpoint()
-})
+for spec, action := range specs {
+	if _, err := c.Add(spec, action); err != nil {
+		log.Fatalf("add %q: %v", spec, err)
+	}
+}
 ```
 
 ### Descriptors and Fixed Intervals
 
 ```go
-c.Add("@hourly", func() error { return nil })
-c.Add("@daily", func() error { return nil })
-c.Add("@weekly", func() error { return nil })
-c.Add("@monthly", func() error { return nil })
-c.Add("@yearly", func() error { return nil })
-
-// @every minimum interval is 30s
-c.Add("@every 30s", func() error { return nil })
-c.Add("@every 5m", func() error { return nil })
-c.Add("@every 1h", func() error { return nil })
+for _, spec := range []string{
+	"@hourly", "@daily", "@midnight", "@weekly",
+	"@monthly", "@yearly", "@annually",
+	"@every 30s", "@every 5m", "@every 1h", // @every minimum interval is 30s
+} {
+	if _, err := c.Add(spec, func() error { return nil }); err != nil {
+		log.Fatalf("add %q: %v", spec, err)
+	}
+}
 ```
 
 ### Task Timeout
 
-Pass a `time.Duration` as the execution timeout; optionally pass a timeout callback:
+Pass a `time.Duration` as the execution limit and a `func()` as the timeout callback:
 
 ```go
-c.Add("@every 1m", func() error {
+_, err := c.Add("@every 1m", func() error {
 	time.Sleep(10 * time.Second)
 	return nil
-}, 3*time.Second, func() {
-	fmt.Println("task timed out")
+}, "slow job", 3*time.Second, func() {
+	log.Println("task timed out")
 })
+if err != nil {
+	log.Fatal(err)
+}
 ```
+
+A timed-out task is marked `TaskFailed`, but the goroutine running the action is not interrupted and keeps running until it returns.
 
 ### Task Dependencies
 
 Dependent tasks must use `func() error` and declare prerequisites with `[]core.Wait`:
 
 ```go
-parentID, err := c.Add("@every 1m", func() error {
+prepareID, err := c.Add("@every 1m", func() error {
 	return prepare()
 }, "prepare")
 if err != nil {
-	panic(err)
+	log.Fatal(err)
 }
 
-childID, err := c.Add("@every 1m", func() error {
+_, err = c.Add("@every 1m", func() error {
 	return process()
 }, "process", []core.Wait{
-	{ID: parentID, Delay: 10 * time.Second, State: core.Stop},
+	{ID: prepareID, State: core.Stop},
 })
 if err != nil {
-	panic(err)
+	log.Fatal(err)
 }
-
-_ = childID
 ```
 
-`Wait.State`:
+Dependency behavior:
 
-- `core.Stop`: fail and stop the dependent task when a prerequisite fails
-- `core.Skip`: skip the failed prerequisite and keep waiting for the rest
+| Condition | Result |
+|-----------|--------|
+| Every prerequisite is `TaskCompleted` | The dependent task runs |
+| A prerequisite failed with `State: core.Stop` | The dependent task is marked `TaskFailed` |
+| A prerequisite failed with `State: core.Skip` | That prerequisite is ignored; the rest are still awaited |
+| A prerequisite ID does not exist | The dependent task is marked `TaskFailed` |
+| Prerequisites are not done within 1 minute | The dependent task is marked `TaskFailed` |
+
+- Dependencies are evaluated against each prerequisite's current state, not against a run in the same cycle
+- Tasks registered with `func()` start as `TaskCompleted`, so their dependents do not wait for their first run
+- `Add` returns an error when a `func()` action is combined with dependencies
 
 ### Advanced: Remove and List
 
@@ -167,18 +180,23 @@ _ = childID
 // remove by ID
 c.Remove(id)
 
-// clear all tasks
+// remove every task
 c.RemoveAll()
 
 // list currently enabled tasks
-tasks := c.List()
-for _, t := range tasks {
-	fmt.Println(t.ID)
+for _, t := range c.List() {
+	log.Println(t.ID)
 }
 
-// graceful stop: wait for in-flight tasks
-ctx := c.Stop()
-<-ctx.Done()
+// graceful shutdown, waiting at most 30 seconds
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+
+select {
+case <-c.Stop().Done():
+case <-ctx.Done():
+	log.Println("shutdown timeout")
+}
 ```
 
 ## API Reference
@@ -192,8 +210,8 @@ type Config struct {
 ```
 
 | Field | Description |
-|------|------|
-| `Location` | Schedule timezone; uses `time.Local` when `nil` |
+|-------|-------------|
+| `Location` | Schedule timezone; `time.Local` when `nil` |
 
 ### New
 
@@ -201,7 +219,7 @@ type Config struct {
 func New(c Config) (*cron, error)
 ```
 
-Creates a scheduler instance. Initializes the min-heap, parser, dependency manager, and logger (prefers syslog, falls back to stderr).
+Creates a scheduler and initializes the min-heap, parser, dependency subsystem, and logger (syslog with tag `goCron` first, stderr on failure).
 
 ### Start / Stop
 
@@ -210,8 +228,10 @@ func (c *cron) Start()
 func (c *cron) Stop() context.Context
 ```
 
-- `Start`: starts the main loop and dependency worker pool; safe to call repeatedly (no-op if already running)
-- `Stop`: stops the scheduler and workers, returns a `context.Context` that cancels after in-flight tasks finish
+| Method | Description |
+|--------|-------------|
+| `Start` | Starts the event loop and the dependency worker pool; no-op when already running |
+| `Stop` | Stops the event loop and worker pool; returns a `context.Context` cancelled after in-flight tasks without dependencies finish |
 
 ### Add
 
@@ -219,37 +239,43 @@ func (c *cron) Stop() context.Context
 func (c *cron) Add(spec string, action interface{}, arg ...interface{}) (int64, error)
 ```
 
-Adds a scheduled task and returns a monotonic task ID.
+Adds a scheduled task and returns a monotonically increasing ID. Callable before or after `Start`.
 
 | Parameter | Type | Description |
-|------|------|------|
+|-----------|------|-------------|
 | `spec` | `string` | Cron expression, descriptor, or `@every <duration>` |
-| `action` | `func()` or `func() error` | Task body; dependencies require `func() error` |
-| `arg` | variadic | See optional arguments below |
-
-Optional arguments (any combination):
+| `action` | `func()` or `func() error` | Task body; must be `func() error` when dependencies are set |
+| `arg` | variadic | Any combination of the types below |
 
 | Type | Purpose |
-|------|------|
+|------|---------|
 | `string` | Task description |
-| `time.Duration` | Execution timeout |
-| `func()` | Timeout callback (`onDelay`) |
-| `[]Wait` | Prerequisite dependencies |
-| `[]int64` | (Deprecated) prerequisite task ID list |
+| `time.Duration` | Execution limit |
+| `func()` | Timeout callback |
+| `[]Wait` | Prerequisites |
+| `[]int64` | (Deprecated) prerequisite IDs, equivalent to `Wait{ID: id}` |
+
+Errors:
+
+| Condition | Message |
+|-----------|---------|
+| `spec` cannot be parsed | `failed to parse: ...` |
+| Unsupported `action` type | `action need to be func() or func()` |
+| `func()` with dependencies | `need return value to get dependence support` |
 
 ### Remove / RemoveAll / List
 
 ```go
 func (c *cron) Remove(id int64)
 func (c *cron) RemoveAll()
-func (c *cron) List() []task
+func (c *cron) List() []*task
 ```
 
 | Method | Description |
-|------|------|
-| `Remove` | Disable and remove a task by ID |
-| `RemoveAll` | Clear all tasks from the heap |
-| `List` | Return copies of currently enabled tasks |
+|--------|-------------|
+| `Remove` | Disables the task with the given ID and removes it from the heap |
+| `RemoveAll` | Clears the heap while running; disables every task before `Start` |
+| `List` | Returns pointers to enabled tasks; the `ID` field is readable |
 
 ### Wait / WaitState
 
@@ -269,10 +295,10 @@ const (
 ```
 
 | Field | Description |
-|------|------|
+|-------|-------------|
 | `ID` | Prerequisite task ID |
-| `Delay` | Timeout waiting for prerequisites; dependency worker defaults to 1 minute when `0` |
-| `State` | Failure policy for prerequisites: `Stop` or `Skip` |
+| `Delay` | Currently not applied; the prerequisite wait limit is fixed at 1 minute |
+| `State` | Policy when the prerequisite fails: `Stop` or `Skip` (default `Stop`) |
 
 ### Task States
 
@@ -285,15 +311,17 @@ const (
 )
 ```
 
-### Schedule Syntax Summary
+### Schedule Syntax
 
 | Format | Example | Description |
-|------|------|------|
-| 5-field cron | `*/5 9-17 * * 1-5` | minute hour day month weekday |
-| Descriptors | `@hourly` `@daily` `@weekly` `@monthly` `@yearly` | Built-in shortcuts |
-| Fixed interval | `@every 30s` | Minimum 30 seconds |
-| Field syntax | `*` `n` `n-m` `a,b,c` `*/n` | all, single, range, list, step |
+|--------|---------|-------------|
+| 5-field cron | `30 9-17 * * 1-5` | minute (0-59) hour (0-23) day (1-31) month (1-12) weekday (0-6, 0 is Sunday) |
+| Descriptors | `@yearly` `@annually` `@monthly` `@weekly` `@daily` `@midnight` `@hourly` | Built-in shortcuts |
+| Fixed interval | `@every 30s` | Parsed by `time.ParseDuration`, minimum 30 seconds |
+| Field syntax | `*` `n` `n-m` `a,b,n-m` `*/n` | all, single, range, list, step |
+
+`*/n` matches field values divisible by n; `n-m/s` is not supported.
 
 ***
 
-©️ 2025 [邱敬幃 Pardn Chiu](https://linkedin.com/in/pardnchiu)
+©️ 2025 [邱敬幃 Pardn Chiu](https://www.linkedin.com/in/pardnchiu)

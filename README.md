@@ -8,16 +8,16 @@
 </p>
 
 <p align="center">
-<a href="https://pkg.go.dev/github.com/pardnchiu/go-scheduler"><img src="https://img.shields.io/badge/GO-REFERENCE-blue?include_prereleases&style=for-the-badge" alt="Go Reference"></a>
+<a href="https://pkg.go.dev/github.com/pardnchiu/go-scheduler/core"><img src="https://img.shields.io/badge/GO-REFERENCE-blue?include_prereleases&style=for-the-badge" alt="Go Reference"></a>
 <a href="https://github.com/pardnchiu/go-scheduler/releases"><img src="https://img.shields.io/github/v/tag/pardnchiu/go-scheduler?include_prereleases&style=for-the-badge" alt="Release"></a>
 <a href="LICENSE"><img src="https://img.shields.io/github/license/pardnchiu/go-scheduler?include_prereleases&style=for-the-badge" alt="License"></a>
 <a href="https://app.codecov.io/github/pardnchiu/go-scheduler/tree/develop"><img src="https://img.shields.io/codecov/c/github/pardnchiu/go-scheduler/develop?include_prereleases&style=for-the-badge" alt="Coverage"></a><br>
-<a href="https://github.com/avelino/awesome-go"><img src="https://awesome.re/mentioned-badge.svg" hight="40" alt="Coverage"></a>
+<a href="https://github.com/avelino/awesome-go"><img src="https://awesome.re/mentioned-badge.svg" height="40" alt="Mentioned in Awesome Go"></a>
 </p>
 
 ***
 
-> A Go scheduling library with task dependencies, timeout control, and cron expressions
+> A Go scheduling library with task dependency chains, execution timeouts, and cron expressions
 
 ## Table of Contents
 
@@ -28,13 +28,13 @@
 
 ## Features
 
-> `go get github.com/pardnchiu/go-scheduler` · [Documentation](./doc/doc.md)
+> `go get github.com/pardnchiu/go-scheduler@latest` · [Documentation](./doc/doc.md)
 
-- **Task Dependency Chains** — Declare prerequisites via Wait, with Stop or Skip strategies on failure.
-- **Timeouts and Callbacks** — Set per-task execution limits; timeouts trigger onDelay and mark failure.
-- **Cron and Descriptors** — Supports 5-field cron, @hourly/@daily descriptors, and @every intervals.
-- **Heap Priority Queue** — Min-heap tracks next fire times; add and remove tasks without restart.
-- **Graceful Shutdown** — Stop returns a context that completes after in-flight tasks finish.
+- **Task Dependency Chains** — Declare prerequisites with `[]Wait` and choose Stop or Skip when a prerequisite fails.
+- **Timeouts and Callbacks** — Cap each task's execution time; a timeout fires a callback and marks the task failed.
+- **Cron, Descriptors, and Intervals** — Mix 5-field cron, descriptors such as `@daily`, and `@every` intervals.
+- **Min-Heap Event Loop** — A min-heap tracks next fire times, so tasks can be added or removed while running.
+- **Graceful Shutdown** — `Stop` returns a context that completes only after in-flight tasks finish.
 
 ## Architecture
 
@@ -42,14 +42,15 @@
 
 ```mermaid
 graph TB
-    Client[Caller] --> Cron[Cron Scheduler]
+    App[Caller] --> Cron[Cron Scheduler]
+    Cron --> Parser[Expression Parser]
     Cron --> Heap[Task Min-Heap]
-    Cron --> Parser[Cron Parser]
-    Cron --> Depend[Dependency Manager]
+    Heap --> Loop[Event Loop]
+    Loop -->|no deps| Runner[Task Execution]
+    Loop -->|has deps| Depend[Dependency Subsystem]
     Depend --> Workers[Worker Pool]
-    Heap --> Run[Task Execution]
-    Depend --> Run
-    Run --> Result[State Update]
+    Workers --> Runner
+    Runner --> State[State Update]
 ```
 
 ## License
@@ -58,13 +59,12 @@ This project is licensed under the [MIT LICENSE](LICENSE).
 
 ## Author
 
-<img src="https://github.com/pardnchiu.png" align="left" width="96" height="96" style="margin-right: 0.5rem;">
+Just [open an issue](https://github.com/pardnchiu/go-scheduler/issues/new) to share an idea.
 
-<h4 style="padding-top: 0">邱敬幃 Pardn Chiu</h4>
-
-<a href="mailto:dev@pardn.io">hi@pardn.io</a><br>
-<a href="https://linkedin.com/in/pardnchiu">https://linkedin.com/in/pardnchiu</a>
+<a href="https://github.com/pardnchiu/go-scheduler/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=pardnchiu/go-scheduler&cache_bust=2026-09-17" alt="go-scheduler contributors" />
+</a>
 
 ***
 
-©️ 2025 [邱敬幃 Pardn Chiu](https://linkedin.com/in/pardnchiu)
+©️ 2025 [邱敬幃 Pardn Chiu](https://www.linkedin.com/in/pardnchiu)
