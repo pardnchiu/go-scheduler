@@ -1,4 +1,4 @@
 .DS_Store
-memo.md
 *.log
 wiki-worker/
+.doc
