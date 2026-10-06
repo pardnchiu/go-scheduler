@@ -1,3 +1,5 @@
+最後更新：2026-10-07
+
 > [!NOTE]
 > 此 README 由 [SKILL](https://github.com/agenvoy/skill-readme-generate) 生成，英文版請參閱 [這裡](../README.md)。
 
@@ -10,15 +12,13 @@
 <p align="center">
 <a href="https://pkg.go.dev/github.com/pardnchiu/go-scheduler/core"><img src="https://img.shields.io/badge/GO-REFERENCE-blue?include_prereleases&style=for-the-badge" alt="Go Reference"></a>
 <a href="https://github.com/pardnchiu/go-scheduler/releases"><img src="https://img.shields.io/github/v/tag/pardnchiu/go-scheduler?include_prereleases&style=for-the-badge" alt="Release"></a>
-<a href="../LICENSE"><img src="https://img.shields.io/github/license/pardnchiu/go-scheduler?include_prereleases&style=for-the-badge" alt="License"></a>
-<a href="https://app.codecov.io/github/pardnchiu/go-scheduler/tree/develop"><img src="https://img.shields.io/codecov/c/github/pardnchiu/go-scheduler/develop?include_prereleases&style=for-the-badge" alt="Coverage"></a><br>
+<a href="../LICENSE"><img src="https://img.shields.io/github/license/pardnchiu/go-scheduler?include_prereleases&style=for-the-badge" alt="License"></a><br>
 <a href="https://github.com/avelino/awesome-go"><img src="https://awesome.re/mentioned-badge.svg" height="40" alt="Mentioned in Awesome Go"></a>
-
 </p>
 
 ---
 
-> Go 排程函式庫，具備任務依賴鏈、執行超時控制與 Cron 表達式
+> Go 定時任務排程函式庫，具備任務依賴鏈、執行逾時控制與優雅關閉
 
 ## 目錄
 
@@ -63,7 +63,7 @@ graph TB
 Just [open an issue](https://github.com/pardnchiu/go-scheduler/issues/new) to share an idea.
 
 <a href="https://github.com/pardnchiu/go-scheduler/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=pardnchiu/go-scheduler&cache_bust=2026-09-17" alt="go-scheduler contributors" />
+  <img src="https://contrib.rocks/image?repo=pardnchiu/go-scheduler&cache_bust=2026-10-07" alt="go-scheduler contributors" />
 </a>
 
 ---

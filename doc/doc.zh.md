@@ -1,5 +1,7 @@
 # go-scheduler - 技術文件
 
+最後更新：2026-10-07
+
 > 返回 [README](./README.zh.md)
 
 ## 前置需求

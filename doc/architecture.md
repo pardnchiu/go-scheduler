@@ -1,5 +1,7 @@
 # go-scheduler - Architecture
 
+Last updated: 2026-10-07
+
 > Back to [README](../README.md)
 
 ## Overview
